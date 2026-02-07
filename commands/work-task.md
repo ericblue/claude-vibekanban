@@ -13,25 +13,48 @@ You are picking up a specific development task and executing it end-to-end. You 
 
 ### 1. Identify the Task
 
-The user will provide a task ID (e.g., `1.2`, `2.1`). If no ID is provided, ask which task they want to work on.
+The user can identify a task in any of these ways:
+
+- **Plan task ID** (e.g., `1.2`, `2.1`) - Look it up in the development plan task tables
+- **Task title or partial title** (e.g., `"auth"`, `"set up database"`) - Fuzzy match against both the development plan and VibeKanban tasks
+- **No input provided** - List available tasks and ask which one to work on
+
+**Resolution logic:**
+
+1. If the input matches a plan task ID pattern (digits.digits), look it up in the plan
+2. Otherwise, treat it as a title search:
+   - Use `list_projects` and `list_tasks` to fetch all VK tasks
+   - Also check task titles in `docs/development-plan.md` if it exists
+   - Find tasks whose title contains the search text (case-insensitive)
+   - If multiple matches, show them and ask the user to pick one
+   - If exactly one match, confirm it with the user before proceeding
+3. If no match is found, show available tasks and ask the user to clarify
+
+This allows working on tasks that were created directly in VibeKanban and may not exist in the development plan.
 
 ### 2. Assemble Context
 
 Read these files to build a complete picture of what needs to be done:
 
-1. **Development Plan** (`docs/development-plan.md`):
+1. **Development Plan** (`docs/development-plan.md`) -- if the task exists in the plan:
    - Find the task row in the task table (ID, title, description, priority, complexity, dependencies)
    - Find the task's acceptance criteria in the Task Details section
    - Note which epic this task belongs to and the epic's purpose
    - Identify the VK task ID from the `<!-- vk:ID -->` comment
 
-2. **PRD** (`docs/prd.md` or other PRD file in `docs/`):
-   - Read the sections relevant to this task's epic and feature area
+2. **VibeKanban task** -- if the task exists in VK (or was matched by title):
+   - Use `get_task` to fetch the full task details including title and description
+   - Use the VK description as context, especially for tasks not in the plan
+
+3. **PRD** (`docs/prd.md` or other PRD file in `docs/`):
+   - Read the sections relevant to this task's feature area
    - Understand the broader product context and goals
 
-3. **Existing codebase**:
+4. **Existing codebase**:
    - Explore the project structure to understand what exists
    - Read files related to the task's area of concern
+
+Note: Not all context sources will exist for every task. A task created directly in VK may have no plan entry or AC. In that case, use the VK task title and description as the primary context, and ask the user for any missing acceptance criteria before starting implementation.
 
 ### 3. Check Dependencies
 
@@ -98,9 +121,11 @@ Then ask: **"Should I mark this task as done in VibeKanban?"**
 
 ### 8. Handle Edge Cases
 
+- **VK-only task (not in plan)**: Task was created directly in VibeKanban. Use the VK title and description as context. Ask the user for acceptance criteria if none are apparent. Skip dependency checking.
 - **Task has no VK ID**: Warn the user and suggest running `/generate-tasks` to link it. Still proceed with implementation.
+- **Multiple title matches**: Show all matches with their status and source (plan, VK, or both). Ask the user to pick one.
 - **Task is already done**: Inform the user. Ask if they want to redo it.
 - **Task is already in progress**: Inform the user. Ask if they want to continue from where it was left.
-- **No development plan**: Tell the user to run `/create-plan` first.
-- **No PRD**: Proceed with just the plan context, but note the missing context.
+- **No development plan**: Check VK directly for tasks. If VK has tasks, work from those.
+- **No PRD**: Proceed with available context, but note the missing context.
 - **Implementation blocked**: If you hit a technical blocker, explain the issue clearly and ask the user for guidance rather than guessing.
