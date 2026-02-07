@@ -35,6 +35,15 @@ Display the following command reference to the user:
 | `/work-task` | Execute a specific task by plan ID or title (fuzzy match). Assembles full context, verifies AC, updates VK. |
 | `/work-next` | Find the best available task and execute it end-to-end. Run repeatedly to work through the backlog. |
 
+## Parallel Execution (Experimental)
+
+| Command | Description |
+|---------|-------------|
+| `/work-parallel` | Analyze backlog, identify independent tasks, set up git worktrees, and launch parallel Claude Code sessions (Tier 1) |
+| `/delegate-task` | Delegate a task to a separate VK workspace session with a chosen agent (Tier 2) |
+| `/delegate-batch` | Delegate multiple independent tasks to parallel VK workspace sessions (Tier 2) |
+| `/session-status` | Check status of all active workspace sessions, worktrees, and in-progress tasks |
+
 ## Plan Management
 
 | Command | Description |
@@ -52,4 +61,4 @@ Display the following command reference to the user:
 
 ---
 
-**11 commands total.** For detailed documentation, see the project README.
+**16 commands total** (12 core + 4 experimental). For detailed documentation, see the project [README](../README.md), [Cookbook](../docs/cookbook.md), and [Architecture](../docs/architecture.md).
