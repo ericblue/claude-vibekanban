@@ -28,6 +28,9 @@ flowchart LR
     DevPlan --> AddEpic[➕ /add-epic]
     DevPlan --> CloseEpic[✅ /close-epic]
     DevPlan --> NextTask[🎯 /next-task]
+    NextTask --> WorkNext[🔨 /work-next]
+    VK --> WorkTask[🔨 /work-task]
+    WorkTask --> VK
 ```
 
 ## Commands
@@ -41,6 +44,13 @@ flowchart LR
 | `/create-plan` | Generate a structured development plan with epics, complexity estimates, and dependencies |
 | `/generate-tasks` | Create VibeKanban tasks from the development plan |
 | `/sync-plan` | Synchronize plan with VibeKanban status with drift detection (VK is source of truth) |
+
+### Execution
+
+| Command | Description |
+|---------|-------------|
+| `/work-task` | Execute a specific task end-to-end with full context and AC verification |
+| `/work-next` | Find the best next task and execute it (combines `/next-task` + `/work-task`) |
 
 ### Plan Management
 
@@ -81,6 +91,14 @@ sequenceDiagram
     C->>P: Parse priorities & dependencies
     C->>VK: Get task statuses
     C->>U: Top 3 recommendations
+
+    U->>C: /work-next (or /work-task [ID])
+    C->>P: Read task details + AC
+    C->>VK: Mark task inprogress
+    C->>C: Implement task
+    C->>U: Verify AC + report changes
+    U->>C: Confirm done
+    C->>VK: Mark task done
 
     U->>C: /sync-plan
     C->>VK: Get task statuses
