@@ -1,6 +1,6 @@
 ---
 description: Recommend the best next task to work on based on priority and dependencies
-allowed-tools: mcp__vibekanban__list_projects, mcp__vibekanban__list_tasks, mcp__vibekanban__get_task, mcp__vibekanban__update_task
+allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks, mcp__vibe_kanban__get_task, mcp__vibe_kanban__update_task
 ---
 
 # Next Task Recommendation

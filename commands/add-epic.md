@@ -1,6 +1,6 @@
 ---
 description: Add a new epic to an existing development plan
-allowed-tools: mcp__vibekanban__list_projects, mcp__vibekanban__list_tasks
+allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks
 ---
 
 # Add Epic

@@ -1,6 +1,6 @@
 ---
 description: Create a development plan from a PRD with task breakdown
-allowed-tools: mcp__vibekanban__list_projects, mcp__vibekanban__list_tasks
+allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks
 ---
 
 # Create Development Plan

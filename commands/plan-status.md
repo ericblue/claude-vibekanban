@@ -1,6 +1,6 @@
 ---
 description: Show development plan progress summary without modifying files
-allowed-tools: mcp__vibekanban__list_projects, mcp__vibekanban__list_tasks, mcp__vibekanban__get_task
+allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks, mcp__vibe_kanban__get_task
 ---
 
 # Plan Status
