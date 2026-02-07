@@ -125,8 +125,8 @@ sequenceDiagram
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/claude-code-prd-workflow.git
-cd claude-code-prd-workflow
+git clone https://github.com/ericblue/claude-vibekanban.git
+cd claude-vibekanban
 
 # Run the install script
 ./install.sh
