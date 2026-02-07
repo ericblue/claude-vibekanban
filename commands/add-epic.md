@@ -11,7 +11,7 @@ You are adding a new epic to an existing development plan. This is useful when s
 
 ## Current Plan
 
-!`cat docs/development-plan.md 2>/dev/null`
+Read the file `docs/development-plan.md` to get the current plan contents. If the file doesn't exist, inform the user and suggest running `/create-plan` first.
 
 ## Instructions
 

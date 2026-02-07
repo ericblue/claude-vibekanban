@@ -11,7 +11,7 @@ You are providing a quick progress overview of the development plan by checking 
 
 ## Current Plan
 
-!`cat docs/development-plan.md 2>/dev/null`
+Read the file `docs/development-plan.md` to get the current plan contents. If the file doesn't exist, inform the user and suggest running `/create-plan` first.
 
 ## Instructions
 

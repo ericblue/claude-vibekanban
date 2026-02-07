@@ -13,7 +13,9 @@ This workflow bridges the gap between product requirements and task management:
 
 ```mermaid
 flowchart LR
-    PRD[📄 PRD<br/>docs/prd.md] --> Review[🔍 /prd-review]
+    Idea[💡 Project Idea] --> GenPRD[📝 /generate-prd]
+    GenPRD --> PRD[📄 PRD<br/>docs/prd.md]
+    PRD --> Review[🔍 /prd-review]
     Review --> Questions[❓ Clarifying<br/>Questions]
     Questions --> Answers[✅ User<br/>Answers]
     Answers --> Plan[📋 /create-plan]
@@ -25,6 +27,7 @@ flowchart LR
     DevPlan --> Status[📈 /plan-status]
     DevPlan --> AddEpic[➕ /add-epic]
     DevPlan --> CloseEpic[✅ /close-epic]
+    DevPlan --> NextTask[🎯 /next-task]
 ```
 
 ## Commands
@@ -33,16 +36,18 @@ flowchart LR
 
 | Command | Description |
 |---------|-------------|
+| `/generate-prd` | Generate a PRD from a project idea through guided questions |
 | `/prd-review` | Analyze PRD, identify gaps, suggest epic breakdown, ask clarifying questions |
-| `/create-plan` | Generate a structured development plan with epics from PRD |
+| `/create-plan` | Generate a structured development plan with epics, complexity estimates, and dependencies |
 | `/generate-tasks` | Create VibeKanban tasks from the development plan |
-| `/sync-plan` | Synchronize plan with VibeKanban status (VK is source of truth) |
+| `/sync-plan` | Synchronize plan with VibeKanban status with drift detection (VK is source of truth) |
 
 ### Plan Management
 
 | Command | Description |
 |---------|-------------|
 | `/plan-status` | Show progress summary without modifying files (read-only) |
+| `/next-task` | Recommend the best next task based on priority, complexity, and dependencies |
 | `/add-epic` | Add a new epic to an existing development plan |
 | `/close-epic` | Mark an epic as complete after verifying all tasks are done |
 
@@ -55,21 +60,31 @@ sequenceDiagram
     participant P as Plan
     participant VK as VibeKanban
 
+    U->>C: /generate-prd
+    C->>U: Interview questions
+    U->>C: Answers
+    C->>P: Create PRD
+
     U->>C: /prd-review
     C->>U: Clarifying questions
     U->>C: Answers
 
     U->>C: /create-plan
-    C->>P: Create plan
+    C->>P: Create plan (with complexity & dependencies)
 
     U->>C: /generate-tasks
     C->>VK: Create tasks
     VK-->>C: Task IDs
     C->>P: Link task IDs
 
+    U->>C: /next-task
+    C->>P: Parse priorities & dependencies
+    C->>VK: Get task statuses
+    C->>U: Top 3 recommendations
+
     U->>C: /sync-plan
     C->>VK: Get task statuses
-    C->>P: Update checkboxes
+    C->>P: Update plan + drift detection
 ```
 
 ## Installation
@@ -174,7 +189,7 @@ your-project/
 
 ## Development Plan Format
 
-The development plan uses an **epic-based format** that enables hierarchical task tracking with progress percentages:
+The development plan uses an **epic-based format** that enables hierarchical task tracking with progress percentages, complexity estimates, and dependency management:
 
 ```markdown
 # Development Plan: Project Name
@@ -218,10 +233,22 @@ Setting up the project infrastructure and dependencies.
 
 ### Tasks
 
-| ID | Title | Description | Priority | Status |
-|----|-------|-------------|----------|--------|
-| 1.1 | Set up project structure | Initialize with folder structure | High | <!-- vk:abc123 --> |
-| 1.2 | Configure CI/CD | GitHub Actions for testing | Medium | <!-- vk:def456 --> |
+| ID | Title | Description | Priority | Complexity | Depends On | Status |
+|----|-------|-------------|----------|------------|------------|--------|
+| 1.1 | Set up project structure | Initialize with folder structure | High | S | — | <!-- vk:abc123 --> |
+| 1.2 | Configure CI/CD | GitHub Actions for testing | Medium | M | 1.1 | <!-- vk:def456 --> |
+
+### Task Details
+
+**1.1 - Set up project structure**
+- [x] Project builds with no errors
+- [x] Folder structure follows convention: src/, tests/, docs/
+- [x] README includes setup instructions
+
+**1.2 - Configure CI/CD**
+- [x] GitHub Actions workflow runs on push to main
+- [x] Tests execute and report results in CI
+- [x] Build artifacts are generated
 
 ---
 
@@ -236,10 +263,24 @@ Implementing the main application functionality.
 
 ### Tasks
 
-| ID | Title | Description | Priority | Status |
-|----|-------|-------------|----------|--------|
-| 2.1 | Implement auth | JWT-based authentication | High | <!-- vk:ghi789 --> |
-| 2.2 | Add user API | CRUD operations for users | High | <!-- vk:jkl012 --> |
+| ID | Title | Description | Priority | Complexity | Depends On | Status |
+|----|-------|-------------|----------|------------|------------|--------|
+| 2.1 | Implement auth | JWT-based authentication | High | L | 1.1, 1.2 | <!-- vk:ghi789 --> |
+| 2.2 | Add user API | CRUD operations for users | High | M | 2.1 | <!-- vk:jkl012 --> |
+
+### Task Details
+
+**2.1 - Implement auth**
+- [ ] POST /auth/login returns JWT for valid credentials
+- [ ] POST /auth/register creates user and returns token
+- [ ] Invalid credentials return 401
+- [ ] Unit tests cover happy path and error cases
+
+**2.2 - Add user API**
+- [ ] GET /users/:id returns user profile
+- [ ] PUT /users/:id updates user fields
+- [ ] Endpoints require valid JWT
+- [ ] Input validation rejects malformed data
 
 ---
 
@@ -257,9 +298,22 @@ Implementing the main application functionality.
 | `### Acceptance Criteria` | Checkable criteria for epic completion |
 | Task table with ID | Hierarchical ID (Epic.Task, e.g., 1.1, 2.3) |
 | `Priority` column | High / Medium / Low task priority |
+| `Complexity` column | Size estimate: `S` (<1hr), `M` (1-4hrs), `L` (4-8hrs), `XL` (8hrs+) |
+| `Depends On` column | Task IDs that must complete first, or `—` for none |
 | `<!-- vk:ID -->` | VibeKanban task ID for syncing |
+| `### Task Details` | Per-task acceptance criteria as checkboxes (2-4 testable conditions per task) |
 | `## Completion Status Summary` | Dashboard table showing all epic progress |
 | `## Changelog` | History of plan updates |
+
+### Task Dependencies
+
+Dependencies are tracked in the "Depends On" column using task IDs:
+- `—` means the task has no dependencies and can be started immediately
+- `1.1` means the task depends on task 1.1 being completed first
+- `1.1, 1.2` means the task depends on both 1.1 and 1.2
+- Dependencies can cross epic boundaries (e.g., task 2.1 depending on 1.2)
+
+The `/next-task` command uses these dependencies to recommend which task to work on next, and `/sync-plan` detects dependency violations (tasks started before their dependencies are done).
 
 ## Sync Behavior
 

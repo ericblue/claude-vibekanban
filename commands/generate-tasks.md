@@ -11,8 +11,7 @@ You are creating tasks in VibeKanban based on the development plan. This links t
 
 ## Prerequisites Check
 
-Development plan location:
-!`head -150 docs/development-plan.md 2>/dev/null`
+Read the file `docs/development-plan.md` to get the current plan contents. If the file doesn't exist, inform the user and suggest running `/create-plan` first.
 
 ## Instructions
 

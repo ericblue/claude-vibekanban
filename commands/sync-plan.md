@@ -11,7 +11,7 @@ You are synchronizing the development plan (`docs/development-plan.md`) with Vib
 
 ## Current Plan
 
-!`cat docs/development-plan.md 2>/dev/null`
+Read the file `docs/development-plan.md` to get the current plan contents. If the file doesn't exist, inform the user and suggest running `/create-plan` first.
 
 ## Instructions
 
@@ -49,7 +49,31 @@ Compare plan with VK:
 - **Unlinked tasks** - Tasks in plan without VK ID (need `/generate-tasks`)
 - **Orphaned tasks** - Tasks in VK not found in plan
 
-### 5. Update the Plan
+### 5. Drift Detection
+
+After comparing plan and VK status, check for these drift indicators:
+
+#### Stale In-Progress Tasks
+- Identify tasks marked `inprogress` in VK
+- Flag them for user review (they may be stuck, forgotten, or need reassignment)
+- Display how long they've been in progress if the information is available
+
+#### Dependency Violations
+- Parse the "Depends On" column from the development plan
+- Check if any task has been started (`inprogress`) or completed (`done`) while its dependencies are NOT yet complete
+- Flag these as violations that may indicate quality risks
+
+#### Blocked Tasks Ready to Start
+- Find tasks in `todo` status whose dependencies (from the "Depends On" column) are ALL now `done`/`completed`
+- These are newly unblocked and ready to be picked up
+- Highlight them as actionable items
+
+#### Scope Drift (Orphaned/Unplanned Tasks)
+- Identify tasks in VK that have no matching entry in the development plan (orphaned tasks)
+- Identify tasks in the plan that were never created in VK (unlinked tasks)
+- Flag both for the user to reconcile
+
+### 6. Update the Plan
 
 Modify `docs/development-plan.md`:
 
@@ -58,7 +82,7 @@ Modify `docs/development-plan.md`:
 3. **Update "Last synced" date** in header
 4. **Add changelog entry** with summary of changes
 
-### 6. Report Changes
+### 7. Report Changes
 
 Provide a sync summary:
 
@@ -86,6 +110,27 @@ Provide a sync summary:
 
 - [X] tasks in plan without VK ID (run /generate-tasks)
 - [Y] tasks in VK not found in plan
+
+### Drift Detection
+
+#### Stale In-Progress Tasks
+| ID | Task | Status |
+|----|------|--------|
+| 1.3 | Implement caching | inprogress (review recommended) |
+
+#### Dependency Violations
+| ID | Task | Status | Unmet Dependencies |
+|----|------|--------|--------------------|
+| 2.3 | Build API layer | inprogress | 2.1 (still todo) |
+
+#### Ready to Start (Unblocked)
+| ID | Task | Priority | Dependencies (all done) |
+|----|------|----------|------------------------|
+| 2.2 | Add user model | High | 1.1, 1.2 |
+
+#### Scope Drift
+- **Orphaned (in VK, not in plan):** [list or "None"]
+- **Unlinked (in plan, not in VK):** [list or "None"]
 
 ### Overall Progress
 

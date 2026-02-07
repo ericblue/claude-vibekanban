@@ -10,11 +10,7 @@ You are reviewing a Product Requirements Document (PRD) to understand the requir
 
 ## PRD Location
 
-First, check for a PRD file in the `docs/` folder:
-
-!`ls -la docs/*.md 2>/dev/null`
-
-If no PRD is found, ask the user to provide the path to the PRD file.
+First, check for PRD files in the `docs/` folder by listing `docs/*.md`. If no PRD is found, ask the user to provide the path to the PRD file.
 
 ## Instructions
 

@@ -14,11 +14,11 @@ You are creating a structured development plan based on a PRD. This plan will se
 
 ## PRD Location
 
-!`ls -la docs/*.md 2>/dev/null`
+Check for PRD files by listing `docs/*.md`.
 
 ## Existing Plan Check
 
-!`ls -la docs/development-plan.md 2>/dev/null`
+Check if `docs/development-plan.md` already exists.
 
 ## Instructions
 
@@ -41,10 +41,18 @@ You are creating a structured development plan based on a PRD. This plan will se
    - Independently testable where possible
    - Assigned a priority (High, Medium, Low)
    - Given a hierarchical ID (Epic.Task, e.g., 1.1, 1.2, 2.1)
+   - Estimated for complexity: `S` (Small, <1hr), `M` (Medium, 1-4hrs), `L` (Large, 4-8hrs), `XL` (Extra Large, 8hrs+)
+   - Checked for dependencies on other tasks (reference by ID, e.g., `1.1, 1.2` or `—` for none)
 
-5. **Define acceptance criteria** - Each epic should have clear acceptance criteria
+5. **Identify dependencies** - For each task, determine if it depends on other tasks being completed first. Dependencies can be within the same epic or across epics. Use task IDs to reference dependencies.
 
-6. **Create the plan file** - Write to `docs/development-plan.md`
+6. **Write task-level acceptance criteria** - After each task table, add a `### Task Details` section with specific, testable acceptance criteria for every task. Each task should have 2-4 concrete criteria that define "done" -- these should be verifiable actions (e.g., "API returns 200 for valid input", "Unit tests pass", "Config file is created at path X"), not vague statements.
+
+7. **Define epic-level acceptance criteria** - Each epic should have clear acceptance criteria that represent the overall goal of the epic
+
+8. **Create the plan file** - Write to `docs/development-plan.md`
+
+   Note: The task table provides a scannable overview; the Task Details section below it provides the depth needed for execution. Both are required.
 
 ## Plan Format
 
@@ -94,11 +102,26 @@ Use this exact format for the development plan:
 
 ### Tasks
 
-| ID | Title | Description | Priority | Status |
-|----|-------|-------------|----------|--------|
-| 1.1 | [Task title] | [Description] | High | <!-- vk: --> |
-| 1.2 | [Task title] | [Description] | Medium | <!-- vk: --> |
-| 1.3 | [Task title] | [Description] | Low | <!-- vk: --> |
+| ID | Title | Description | Priority | Complexity | Depends On | Status |
+|----|-------|-------------|----------|------------|------------|--------|
+| 1.1 | [Task title] | [Description] | High | S | — | <!-- vk: --> |
+| 1.2 | [Task title] | [Description] | Medium | M | 1.1 | <!-- vk: --> |
+| 1.3 | [Task title] | [Description] | Low | S | — | <!-- vk: --> |
+
+### Task Details
+
+**1.1 - [Task title]**
+- [ ] [Specific, testable criterion - e.g., "Project builds with no errors"]
+- [ ] [Specific, testable criterion - e.g., "Folder structure matches convention: src/, tests/, docs/"]
+- [ ] [Specific, testable criterion - e.g., "README includes setup instructions"]
+
+**1.2 - [Task title]**
+- [ ] [Specific, testable criterion - e.g., "Database migrations run successfully"]
+- [ ] [Specific, testable criterion - e.g., "Connection pool configured with env vars"]
+
+**1.3 - [Task title]**
+- [ ] [Specific, testable criterion]
+- [ ] [Specific, testable criterion]
 
 ---
 
@@ -112,9 +135,16 @@ Use this exact format for the development plan:
 
 ### Tasks
 
-| ID | Title | Description | Priority | Status |
-|----|-------|-------------|----------|--------|
-| 2.1 | [Task title] | [Description] | High | <!-- vk: --> |
+| ID | Title | Description | Priority | Complexity | Depends On | Status |
+|----|-------|-------------|----------|------------|------------|--------|
+| 2.1 | [Task title] | [Description] | High | M | 1.1, 1.2 | <!-- vk: --> |
+
+### Task Details
+
+**2.1 - [Task title]**
+- [ ] [Specific, testable criterion - e.g., "API endpoint returns 200 for valid request"]
+- [ ] [Specific, testable criterion - e.g., "Unit tests cover happy path and error cases"]
+- [ ] [Specific, testable criterion - e.g., "Input validation rejects malformed data"]
 
 ---
 
@@ -155,6 +185,9 @@ Use this exact format for the development plan:
 - Progress percentages are calculated as: (completed tasks / total tasks) * 100
 - Task priorities are: `High`, `Medium`, `Low`
 - Hierarchical IDs follow the pattern: Epic.Task (e.g., 1.1, 1.2, 2.1)
+- **Complexity** estimates: `S` (Small, <1hr), `M` (Medium, 1-4hrs), `L` (Large, 4-8hrs), `XL` (Extra Large, 8hrs+). These are rough estimates to help with sprint planning and task selection.
+- **Depends On** references other task IDs that must be completed before this task can start. Use `—` for tasks with no dependencies. Dependencies can cross epic boundaries (e.g., task 2.1 can depend on 1.3).
+- **Task Details** sections provide per-task acceptance criteria as checkboxes. Each task should have 2-4 specific, testable criteria that define "done." These are verifiable conditions (builds, tests pass, endpoint works), not descriptions of what to do. These checkboxes can be checked off during development to track completion within the plan itself.
 
 ## After Creation
 

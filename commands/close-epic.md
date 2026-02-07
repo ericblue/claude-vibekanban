@@ -11,7 +11,7 @@ You are marking an epic as complete in the development plan. This involves verif
 
 ## Current Plan
 
-!`cat docs/development-plan.md 2>/dev/null`
+Read the file `docs/development-plan.md` to get the current plan contents. If the file doesn't exist, inform the user and suggest running `/create-plan` first.
 
 ## Instructions
 
