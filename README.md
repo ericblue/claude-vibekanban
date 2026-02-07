@@ -448,9 +448,23 @@ While this repo ships as Claude Code slash commands, VibeKanban's MCP API suppor
 
 The slash commands in this repo are markdown prompt files -- they can be adapted for other agents by translating the instructions into that agent's prompt format. The MCP tool calls (`list_projects`, `create_task`, `update_task`, etc.) are the same regardless of which agent makes them.
 
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | 2025-06-01 | Initial release with 7 core commands: `/prd-review`, `/create-plan`, `/generate-tasks`, `/sync-plan`, `/plan-status`, `/add-epic`, `/close-epic` |
+| 2.0 | 2026-02-06 | Added `/generate-prd` (interview-style PRD creation) and `/next-task` (priority-based task recommendation). Enhanced `/create-plan` with Complexity and Depends On columns, per-task acceptance criteria in Task Details sections. Enhanced `/sync-plan` with drift detection (stale tasks, dependency violations, blocked tasks ready to start, scope drift). Fixed MCP tool name prefix (`mcp__vibe_kanban__`) across all commands. Replaced inline bash execution with tool instructions to fix permission errors. |
+| 2.1 | 2026-02-06 | Added `/work-task` and `/work-next` execution commands for autonomous task implementation with full context assembly and AC verification. Expanded README with VibeKanban overview, multi-agent support table, and board screenshot. |
+
 ## Related
 
 - [VibeKanban](https://www.vibekanban.com/) - Kanban board with AI agent orchestration
 - [VibeKanban MCP Docs](https://www.vibekanban.com/docs/integrations/vibe-kanban-mcp-server) - MCP server setup and API reference
 - [Claude Code](https://claude.ai/claude-code) - Anthropic's CLI for Claude
 - [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) - Protocol for AI tool integration
+
+## About
+
+A structured, prompt-driven development workflow that bridges product requirements and AI-powered task execution through VibeKanban's MCP API. Designed to give AI coding agents the full context they need -- from PRD to acceptance criteria -- to autonomously implement, verify, and track development tasks.
+
+Created by [Eric Blue](https://about.ericblue.com)
