@@ -75,6 +75,12 @@ flowchart LR
 | `/add-epic` | Add a new epic to an existing development plan |
 | `/close-epic` | Mark an epic as complete after verifying all tasks are done |
 
+### Help
+
+| Command | Description |
+|---------|-------------|
+| `/workflow` | Show command reference and recommended workflow order |
+
 ## Detailed Workflow
 
 ```mermaid
