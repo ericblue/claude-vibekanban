@@ -1,5 +1,9 @@
 ---
 description: Review a PRD and ask clarifying questions before development planning
+version: 0.3-preview
+date: 2026-02-07
+author: Eric Blue (https://github.com/ericblue)
+repository: https://github.com/ericblue/claude-vibekanban
 ---
 
 # PRD Review

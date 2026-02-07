@@ -1,6 +1,10 @@
 ---
 description: Add a new epic to an existing development plan
 allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks
+version: 0.3-preview
+date: 2026-02-07
+author: Eric Blue (https://github.com/ericblue)
+repository: https://github.com/ericblue/claude-vibekanban
 ---
 
 # Add Epic

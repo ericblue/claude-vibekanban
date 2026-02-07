@@ -1,6 +1,10 @@
 ---
 description: Delegate multiple independent tasks to parallel VibeKanban workspace sessions
 allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks, mcp__vibe_kanban__get_task, mcp__vibe_kanban__update_task, mcp__vibe_kanban__start_workspace_session, mcp__vibe_kanban__list_repos, mcp__vibe_kanban__get_repo
+version: 0.3-preview
+date: 2026-02-07
+author: Eric Blue (https://github.com/ericblue)
+repository: https://github.com/ericblue/claude-vibekanban
 ---
 
 # Delegate Batch to Workspace Sessions (Experimental)

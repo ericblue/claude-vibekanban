@@ -1,15 +1,25 @@
 ---
-description: Check status of all active VibeKanban workspace sessions
+description: Check status of all active work across local worktrees and VK sessions
 allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks, mcp__vibe_kanban__get_task
+version: 0.3-preview
+date: 2026-02-07
+author: Eric Blue (https://github.com/ericblue)
+repository: https://github.com/ericblue/claude-vibekanban
 ---
 
-# Workspace Session Status (Experimental)
+# Session & Worktree Status (Experimental)
 
-> **This command is experimental and actively evolving.** VK workspace session behavior is being tested. Expect changes.
+> **This command is experimental and actively evolving.** Expect changes.
 
 ## Context
 
-You are checking the status of tasks that have been delegated to VibeKanban workspace sessions (via `/delegate-task` or `/delegate-batch`) or are being worked on in parallel (via `/work-parallel`). This gives the user a snapshot of all active work across sessions.
+You are checking the status of all active work -- both local parallel sessions (Tier 1 worktrees from `/work-parallel`) and remote delegated sessions (Tier 2 VK workspace sessions from `/delegate-task` or `/delegate-batch`). This gives the user a unified snapshot across all execution mechanisms.
+
+**How it works across tiers:**
+
+- **Both tiers**: VK task status (`inprogress`, `inreview`, `done`) is always available because all sessions update VK via `update_task`. This is the universal signal.
+- **Tier 1 additions**: Local worktree detection via `git worktree list`, git commit activity in worktree branches, and log file checks for headless sessions.
+- **Tier 2 additions**: VK workspace session status and history are available in the VK UI.
 
 ## Instructions
 
@@ -77,7 +87,46 @@ Report which tasks have active worktrees and their paths.
 - **2** tasks will unblock when current work completes
 ```
 
-### 5. Suggest Actions
+### 5. Check for Observable Progress
+
+For tasks with active worktrees, check for recent git activity as a proxy for session progress:
+
+```bash
+git -C ../myproject-worktrees/task-2.3-add-user-api log --oneline -5 2>/dev/null
+```
+
+If there are recent commits, the session is making progress. If the branch has no commits beyond the base, the session may still be starting up or may be stuck.
+
+Also check for log files if sessions were launched in headless mode:
+
+```bash
+ls ../myproject-worktrees/*.log 2>/dev/null
+```
+
+If log files exist, report their last modification time and tail the last few lines to show recent activity.
+
+Report this as a "Session Activity" section:
+
+```
+### Session Activity
+
+| Task | Branch | Last Commit | Log File |
+|------|--------|------------|----------|
+| 2.3 - Add user API | task/2.3-add-user-api | 3 min ago: "Add user endpoint" | task-2.3.log (active) |
+| 3.1 - Setup database | task/3.1-setup-database | 8 min ago: "Add schema migration" | task-3.1.log (active) |
+| 4.2 - Add logging | task/4.2-add-logging | (no commits yet) | No log file |
+```
+
+If a task has no commits and no log activity, suggest the user check on it:
+
+```
+⚠ Task 4.2 has no commits and no log activity. The session may still be starting, or it may be stuck.
+  - If using headless mode: check if the process is still running
+  - If using Agent Teams: ask the lead about teammate status
+  - If using manual terminals: switch to that terminal to check
+```
+
+### 6. Suggest Actions
 
 Based on the status, suggest relevant next steps:
 
@@ -87,7 +136,7 @@ Based on the status, suggest relevant next steps:
 - **Many tasks in review**: "You have [N] tasks waiting for review. Consider reviewing and merging them before starting more work."
 - **Stale in-progress tasks**: If tasks have been `inprogress` without a corresponding worktree or active session, flag them: "Task [X] is marked in progress but has no active worktree or session. It may be stale."
 
-### 6. Provide Cleanup Guidance
+### 7. Provide Cleanup Guidance
 
 If there are worktrees for completed or merged tasks:
 
@@ -101,7 +150,7 @@ Or clean up all finished worktrees:
 - git worktree prune
 ```
 
-### 7. Handle Edge Cases
+### 8. Handle Edge Cases
 
 - **No VK project**: Tell the user to run `/generate-tasks` first.
 - **No tasks in progress**: Report that nothing is active. Suggest `/work-next` or `/work-parallel`.

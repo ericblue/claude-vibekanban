@@ -62,6 +62,36 @@ If your plan and VK tasks are already set up:
 
 Run `/work-next` repeatedly to work through the backlog.
 
+### Want to run multiple tasks in parallel (experimental)
+
+If you have independent tasks ready to go:
+
+```
+/work-parallel             # LLM analyzes backlog and proposes candidates
+```
+
+Or specify tasks explicitly:
+
+```
+/work-parallel 2.3 3.1 4.2
+```
+
+Review the proposed set, adjust if needed, confirm, and parallel sessions launch in isolated git worktrees.
+
+### Want to delegate tasks to remote agents (experimental)
+
+Hand off a task to a VibeKanban workspace session:
+
+```
+/delegate-task 2.3         # delegates task 2.3 to a VK session
+```
+
+Or delegate multiple independent tasks at once:
+
+```
+/delegate-batch 2.3 3.1 4.2
+```
+
 ---
 
 ## End-to-End Walkthroughs
@@ -203,6 +233,124 @@ Nothing is modified. Safe to run anytime.
 
 ---
 
+### Walkthrough: Running tasks in parallel (Tier 1 -- local worktrees)
+
+You have several independent tasks ready and want to knock them out faster.
+
+**Step 1: Identify candidates**
+
+```
+/work-parallel
+```
+
+Claude reads the plan, fetches VK status, and identifies tasks with no mutual dependencies. It proposes up to 3 candidates:
+
+```
+## Parallel Execution Plan
+
+### Tasks to run (3 of 5 available)
+
+| # | Task ID | Title | Priority | Complexity | Branch |
+|---|---------|-------|----------|------------|--------|
+| 1 | 2.3 | Add user API | High | M | task/2.3-add-user-api |
+| 2 | 3.1 | Setup database | High | S | task/3.1-setup-database |
+| 3 | 4.2 | Add logging | Medium | S | task/4.2-add-logging |
+```
+
+**Step 2: Adjust and confirm**
+
+Review the set. You can remove tasks ("remove 3"), add others ("add 3.3"), or change the count ("just run 2"). Nothing happens until you confirm.
+
+**Step 3: Choose permissions**
+
+Claude asks how parallel sessions should handle permissions:
+
+- **Auto-accept** (recommended) -- sessions accept all tool calls
+- **Skip permissions** -- no permission checks at all
+- **Interactive** -- normal prompts in each terminal (manual terminals only)
+- **Pre-configured** -- use your existing `~/.claude/settings.json` allowlist
+
+**Step 4: Worktrees are created**
+
+After confirmation, Claude creates git worktrees:
+
+```
+~/Development/
+  myproject/                              # your main directory
+  myproject-worktrees/
+    task-2.3-add-user-api/
+    task-3.1-setup-database/
+    task-4.2-add-logging/
+```
+
+**Step 5: Sessions launch**
+
+Claude provides instructions to launch sessions using your preferred mechanism (Agent Teams, headless `claude -p`, or manual terminals).
+
+**Step 6: Monitor and review**
+
+Check progress with `/session-status`. When tasks move to `inreview`, `cd` into each worktree to review, test, and merge branches back to main sequentially.
+
+**Step 7: Clean up**
+
+After merging, remove worktrees:
+
+```bash
+git worktree remove ../myproject-worktrees/task-2.3-add-user-api
+```
+
+---
+
+### Walkthrough: Delegating tasks to VK workspace sessions (Tier 2)
+
+You want to hand off a task to a separate agent session managed by VibeKanban.
+
+**Single task delegation:**
+
+```
+/delegate-task 2.3
+```
+
+Claude looks up task 2.3, asks which agent you'd like to use (Claude Code, Cursor, Codex, Gemini, Copilot, DROID), identifies the repo and branch, and calls `start_workspace_session` to launch the remote session.
+
+**Batch delegation:**
+
+```
+/delegate-batch 2.3 3.1 4.2
+```
+
+Same as above, but for multiple tasks at once. Claude verifies independence (no mutual dependencies), asks for the executor type (same for all tasks in a batch), and launches all sessions.
+
+**Monitoring:**
+
+Track progress in the VK UI or with `/session-status`. When the remote agent finishes, the task moves to `inreview`. Open it in VK to see the full diff, leave inline comments, or send revision requests.
+
+**Merging:**
+
+Use VK's one-click merge to merge the branch to main. The task automatically moves to `done`. Then run `/sync-plan` to update the plan file.
+
+---
+
+### Walkthrough: Monitoring parallel work
+
+You've launched 3 parallel sessions and want to know what's happening.
+
+```
+/session-status
+```
+
+This shows:
+- **VK task status** -- which tasks are `inprogress`, `inreview`, or `done`
+- **Local worktrees** -- detected via `git worktree list`, matched to tasks
+- **Git activity** -- recent commits in each worktree as a progress proxy
+- **Log files** -- for headless sessions that redirect output to files
+- **Blocked tasks** -- tasks waiting on the in-progress work to finish
+- **Cleanup suggestions** -- worktrees for completed tasks that can be removed
+
+For real-time monitoring of individual sessions, see the [observability FAQ](#parallel-execution-experimental).
+
+---
+
 ## Common Recipes
 
 ### Recipe: Review-before-merge workflow (recommended for parallel tasks)
@@ -337,6 +485,96 @@ If `/work-task` produces code that doesn't work:
 
 The task stays `inprogress` in VK until you explicitly confirm completion.
 
+### Recipe: Running parallel tasks with explicit IDs
+
+When you already know which tasks to parallelize:
+
+```
+/work-parallel 2.3 3.1 4.2
+```
+
+This skips the analysis step and goes straight to dependency validation and the confirmation screen. Useful when you've already checked independence yourself.
+
+### Recipe: Delegating to a different agent type
+
+If a task is better suited to a different editor or agent:
+
+```
+/delegate-task 2.3
+> Which executor? Cursor
+```
+
+VK launches a Cursor workspace session for task 2.3. The task status updates flow back to VK automatically. You can review in the VK UI when done.
+
+### Recipe: Monitoring headless sessions
+
+If you launched parallel sessions with `claude -p`, capture logs for monitoring:
+
+```bash
+cd ../myproject-worktrees/task-2.3-add-user-api && claude -p "..." --permission-mode auto-accept > task-2.3.log 2>&1 &
+```
+
+Then monitor:
+
+```bash
+tail -f ../myproject-worktrees/task-2.3.log          # watch live output
+git -C ../myproject-worktrees/task-2.3-add-user-api log --oneline -5   # check commits
+```
+
+Or check all sessions at once with `/session-status`.
+
+### Recipe: Using Agent Teams with this workflow
+
+The most powerful parallel setup combines structured planning with Agent Teams coordination:
+
+1. Plan and decompose: `/create-plan` then `/generate-tasks`
+2. Identify parallel candidates: `/work-parallel` (review step -- don't confirm yet)
+3. Note the task IDs and worktree paths from the proposed plan
+4. Create worktrees manually or let `/work-parallel` create them
+5. Spawn an Agent Team where each teammate works in a separate worktree:
+   - Teammate 1: implement task 2.3 in `../myproject-worktrees/task-2.3-add-user-api/`
+   - Teammate 2: implement task 3.1 in `../myproject-worktrees/task-3.1-setup-database/`
+6. Teammates update VK via MCP as they work
+7. After completion, run `/sync-plan` to reconcile
+
+This gives you structured decomposition (this workflow) + real-time coordination (Agent Teams) + persistent tracking (VK).
+
+### Recipe: Cleaning up after parallel work
+
+After all parallel branches are merged to main:
+
+```bash
+# See all active worktrees
+git worktree list
+
+# Remove specific worktrees
+git worktree remove ../myproject-worktrees/task-2.3-add-user-api
+git worktree remove ../myproject-worktrees/task-3.1-setup-database
+
+# Or remove everything at once
+rm -rf ../myproject-worktrees/ && git worktree prune
+
+# Sync the plan to reflect completed work
+/sync-plan
+```
+
+### Recipe: Merging parallel branches safely
+
+When multiple worktree branches are ready to merge:
+
+1. Pick the branch least likely to conflict (simplest changes)
+2. Merge it to main: `git merge task/4.2-add-logging`
+3. Rebase the next branch onto the updated main:
+   ```bash
+   cd ../myproject-worktrees/task-2.3-add-user-api
+   git rebase main
+   ```
+4. Resolve any conflicts (common in shared files: registries, configs, index files)
+5. Merge the rebased branch to main
+6. Repeat for remaining branches
+
+**Tip:** Merge the smallest/most isolated branches first to minimize cascading conflicts.
+
 ---
 
 ## Tips and Best Practices
@@ -362,6 +600,18 @@ The task stays `inprogress` in VK until you explicitly confirm completion.
 - **Don't skip `/prd-review`.** The clarifying questions often surface requirements you forgot. Better to catch gaps before coding.
 - **Include non-functional requirements in the PRD.** Performance targets, security requirements, accessibility -- these become acceptance criteria in the plan.
 - **Use `/add-epic` for scope changes.** Don't manually hack the plan file. The command handles renumbering and keeps the format consistent.
+
+### Parallel execution
+
+- **Start with 2-3 parallel sessions, not 10.** Each session consumes tokens and local resources. Scale up only after you're comfortable with the workflow.
+- **Always use `inreview`, never `done`, for parallel tasks.** Review each branch before merging. The `inreview` status is your quality gate.
+- **Write detailed acceptance criteria.** Parallel sessions (especially headless) can't ask you questions. The more specific the AC, the less ambiguity the agent faces.
+- **Merge branches one at a time.** Use the rebase-then-merge pattern. Even independent tasks often touch shared files (registries, configs, barrel exports).
+- **Run `/session-status` instead of checking each session individually.** It gives you a unified view across worktrees and VK.
+- **Redirect headless output to log files.** You'll want them for debugging when a session produces unexpected results.
+- **Use the same executor for all tasks in a batch delegation.** `/delegate-batch` applies one executor to all tasks. For mixed executors, use `/delegate-task` individually.
+- **Clean up worktrees promptly after merging.** Stale worktrees consume disk space and clutter `git worktree list` output.
+- **Don't run `/sync-plan` from multiple sessions simultaneously.** It modifies the plan file and isn't safe for concurrent writes. Run it once from your main directory after all branches are merged.
 
 ### VibeKanban integration
 
@@ -511,9 +761,60 @@ git worktree prune                   # clean up stale references
 rm -rf ../myproject-worktrees/       # remove the directory entirely if all done
 ```
 
+**Q: How do permissions work for parallel sessions?**
+
+A: Parallel sessions (especially headless ones) can't prompt for interactive permission approval. Before launching sessions, `/work-parallel` asks you to choose a permission mode:
+
+| Mode | Flag | Best for |
+|------|------|----------|
+| **Auto-accept** (recommended) | `--permission-mode auto-accept` | Most parallel workflows |
+| **Skip permissions** | `--dangerously-skip-permissions` | Fast but least safe |
+| **Interactive** | (default) | Manual terminals only -- you must monitor each window |
+| **Pre-configured** | Uses `~/.claude/settings.json` allowedTools | If you've already configured tool allowlists |
+
+Key notes:
+- **Agent Teams** inherit the lead's permission mode. Set it on the lead before spawning teammates.
+- **Headless `claude -p`** is non-interactive and **cannot respond to prompts**. You must use auto-accept, skip permissions, or pre-configured settings.
+- **Manual terminals** support any mode, but interactive requires actively monitoring all terminal windows for prompts.
+
+**Q: How can I see what a parallel session is doing?**
+
+A: It depends on how you launched the session:
+
+- **Manual terminals**: You're already watching. Use `tmux` or split panes to monitor all terminals simultaneously.
+- **Headless `claude -p`**: Redirect output to a log file (`> ../myproject-worktrees/task-2.3.log 2>&1`) and `tail -f` to watch. Use `--output-format stream-json` for structured output.
+- **Agent Teams**: Teammates message the lead with updates, but you can't "attach" to see their full session output.
+- **VK task status**: Always available regardless of mechanism. Run `/session-status` to check which tasks have moved to `inreview` or `done`.
+- **Git activity**: Check recent commits in a worktree (`git -C ../myproject-worktrees/task-2.3-add-user-api log --oneline -5`) as a proxy for progress.
+
+There is currently no `tmux attach`-style mechanism to jump into a running Claude Code session mid-execution. See the [Architecture doc](architecture.md#observability-and-session-monitoring) for details.
+
 **Q: Can parallel tasks cause merge conflicts?**
 
 A: Yes. Each parallel session works on its own branch. When merging back to main, conflicts are possible if tasks touch related files -- especially shared registries, route tables, index/barrel files, and config files. Independent tasks that modify different files merge cleanly. Use the rebase-then-merge pattern: merge one branch, rebase the next onto the updated main, resolve conflicts, repeat.
+
+### Human-in-the-loop and autonomy
+
+**Q: Is this workflow fully autonomous or does it require human input?**
+
+A: Human-in-the-loop by design. Every command has explicit human decision points: confirming which task to work on, reviewing implementations before marking done, approving parallel execution plans, choosing permission modes. There is no "run until the backlog is empty" auto-loop. Each task requires a new invocation. This is intentional -- it keeps humans engaged with progress, prevents runaway token consumption, and ensures quality through review at every step.
+
+**Q: How does this compare to Ralph or other fully autonomous approaches?**
+
+A: Tools like [Ralph](https://github.com/frankbria/ralph-claude-code) take a different approach: continuous autonomous execution loops where the agent iterates on the project with minimal human intervention, using guardrails like rate limiting and circuit breakers to stay safe.
+
+This workflow prioritizes **structured planning and human judgment**: PRD → plan → tasks with dependencies → human-confirmed execution → AC verification → human review before merge. Ralph prioritizes **speed of iteration**: read a prompt file → loop until done → use automated guardrails to detect stuck states.
+
+Neither is universally better:
+- Use this workflow when you need structured decomposition, dependency-aware parallelism, quality gates, multi-agent coordination, or persistent tracking across sessions.
+- Use an autonomous loop when scope is well-defined, tasks are straightforward, and speed matters more than review.
+- They can complement each other: use this workflow for planning (PRD → plan → tasks), then hand well-scoped tasks to an autonomous loop for execution.
+
+See the [Architecture doc](architecture.md#human-in-the-loop-philosophy) for a detailed comparison table.
+
+**Q: Can I make this workflow more autonomous?**
+
+A: Partially. For parallel sessions, you can choose `--dangerously-skip-permissions` or `--permission-mode auto-accept` to let agents run without permission prompts. Headless `claude -p` sessions run without interactive input. But the planning pipeline (`/generate-prd`, `/prd-review`, `/create-plan`) is inherently interactive -- it needs your domain knowledge and judgment. The execution commands (`/work-next`, `/work-task`) always confirm before starting work. This is by design: the human-in-the-loop steps are where quality happens.
 
 ### Agent Teams and multi-agent
 
@@ -622,6 +923,70 @@ git pull
 2. If it's wrong, update it manually
 3. If you have multiple projects, the commands will ask you to select one when ambiguous
 
+### Worktree creation fails
+
+**Problem:** `git worktree add` fails with "branch already exists" or "is already checked out."
+
+**Fix:**
+1. Check if the branch already exists: `git branch --list task/2.3-*`
+2. If the branch exists but the worktree doesn't, delete the stale branch: `git branch -d task/2.3-add-user-api`
+3. If the worktree exists, ask whether to reuse it or create fresh: `git worktree list`
+4. Clean up stale worktree references: `git worktree prune`
+
+### Headless session not starting or hangs
+
+**Problem:** `claude -p` doesn't produce output or seems stuck.
+
+**Fix:**
+1. Check if the process is running: `ps aux | grep claude`
+2. Ensure you used a permission flag -- headless mode **cannot respond to prompts**: `--permission-mode auto-accept` or `--dangerously-skip-permissions`
+3. Verify MCP server is accessible from the worktree directory
+4. Check the log file if you redirected output: `tail -20 ../myproject-worktrees/task-2.3.log`
+
+### Parallel session produces no commits
+
+**Problem:** `/session-status` shows a task is `inprogress` but the worktree branch has no new commits.
+
+**Fix:**
+1. The session may still be analyzing or generating code -- give it more time
+2. Check the log file or terminal for errors
+3. If the session is stuck on a permission prompt (headless without proper flags), it will never progress. Kill it and relaunch with the right permission flag
+4. If the session failed silently, check if the task is still `inprogress` in VK and relaunch manually
+
+### Merge conflicts after parallel work
+
+**Problem:** Rebasing a parallel branch onto main produces conflicts.
+
+**Fix:**
+1. This is expected, especially in shared files (registries, configs, index files)
+2. Resolve conflicts manually: `git rebase main`, fix conflicts, `git rebase --continue`
+3. Merge branches in order from least-conflicting to most-conflicting
+4. For severe conflicts, consider merging the branch manually and discarding the worktree
+
+### `/delegate-task` or `/delegate-batch` fails
+
+**Problem:** `start_workspace_session` returns an error.
+
+**Fix:**
+1. Verify the VK project has repos configured: check with `list_repos`
+2. Ensure the task ID is valid and the task exists in VK
+3. Check that the executor type is supported (CLAUDE_CODE, CURSOR_AGENT, CODEX, GEMINI, COPILOT, DROID)
+4. Verify the base branch exists and is accessible
+
+### Stale worktrees after sessions complete
+
+**Problem:** Worktrees remain after tasks are done, cluttering the filesystem.
+
+**Fix:**
+```bash
+git worktree list                              # see all worktrees
+git worktree remove ../myproject-worktrees/task-2.3-add-user-api  # remove specific
+git worktree prune                             # clean stale references
+rm -rf ../myproject-worktrees/                 # remove all if everything is merged
+```
+
+Run `/session-status` to see which worktrees correspond to completed tasks and can safely be removed.
+
 ---
 
 ## Command Quick Reference
@@ -643,9 +1008,9 @@ git pull
 
 ### Experimental commands
 
-| Command | Input | Description |
-|---------|-------|-------------|
-| `/work-parallel` | Task IDs (optional) | Parallel local sessions via git worktrees |
-| `/delegate-task` | Task ID + agent type | Delegate to VK workspace session |
-| `/delegate-batch` | Task IDs + agent type | Delegate multiple tasks to VK sessions |
-| `/session-status` | None | Check active workspace sessions |
+| Command | Input | Modifies Plan | Modifies VK | Modifies Code | Creates Worktrees |
+|---------|-------|:---:|:---:|:---:|:---:|
+| `/work-parallel` | Task IDs (optional) | No | Yes (marks inprogress) | Yes (in worktrees) | Yes |
+| `/delegate-task` | Task ID or title | No | Yes (starts session) | Yes (remote) | No |
+| `/delegate-batch` | Task IDs or titles | No | Yes (starts sessions) | Yes (remote) | No |
+| `/session-status` | None | No | No | No | No |
