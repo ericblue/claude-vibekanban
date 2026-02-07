@@ -1,6 +1,10 @@
 ---
 description: Analyze backlog, identify independent tasks, set up worktrees, and launch parallel sessions
 allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks, mcp__vibe_kanban__get_task, mcp__vibe_kanban__update_task, mcp__vibe_kanban__list_repos
+version: 0.3-preview
+date: 2026-02-07
+author: Eric Blue (https://github.com/ericblue)
+repository: https://github.com/ericblue/claude-vibekanban
 ---
 
 # Work on Tasks in Parallel (Experimental)
@@ -136,7 +140,37 @@ Slugify titles by: lowercasing, replacing spaces with hyphens, removing special 
 | 4.2 - Add logging | task/4.2-add-logging | ../myproject-worktrees/task-4.2-add-logging/ |
 ```
 
-### 7. Launch Sessions
+### 7. Address Permissions
+
+Before launching sessions, discuss permissions with the user. Parallel sessions need to run with minimal interruption -- permission prompts that block on user input will stall sessions.
+
+Ask the user which approach they prefer:
+
+```
+## Permissions for Parallel Sessions
+
+Parallel sessions need permission to use tools (Bash, file editing, MCP calls) without blocking.
+How would you like to handle this?
+
+1. **Auto-accept mode** (recommended) - Sessions accept all tool calls without prompting.
+   Each session runs with: `--permission-mode auto-accept`
+
+2. **Skip permissions** - No permission checks at all. Fastest but least safe.
+   Each session runs with: `--dangerously-skip-permissions`
+
+3. **Interactive** (manual terminals only) - Normal permission prompts in each terminal.
+   You'll need to monitor and respond in each terminal window.
+
+4. **Pre-configured settings** - Use your existing ~/.claude/settings.json allowedTools.
+   Sessions will only prompt for tools not in your allowlist.
+```
+
+Notes:
+- **Agent Teams**: Teammates inherit the lead's permission mode. Set the lead's mode before spawning teammates.
+- **Headless `claude -p`**: Non-interactive -- **cannot respond to prompts**. Must use option 1, 2, or 4.
+- **Manual terminals**: Any option works, but option 3 requires active monitoring of all terminals.
+
+### 8. Launch Sessions
 
 Explain to the user how to launch Claude Code sessions in each worktree. The launch mechanism depends on what's available:
 
@@ -151,16 +185,18 @@ Create an agent team with 3 teammates. Each teammate should work in a separate w
 - Teammate 3: cd to ../myproject-worktrees/task-4.2-add-logging/ and implement task 4.2 (Add logging). Acceptance criteria: [list AC]. Mark as inreview in VK when done.
 ```
 
+Note: The lead's permission mode propagates to all teammates. If the lead uses `--dangerously-skip-permissions`, all teammates do too.
+
 **Option B: Headless mode**
 
-Provide commands the user can run in separate terminals:
+Provide commands the user can run in separate terminals. Include the permission flag the user chose in step 7:
 
 ```bash
-cd ../myproject-worktrees/task-2.3-add-user-api && claude -p "Implement task 2.3: Add user API. [Include full context: description, AC, relevant PRD sections]. When done, use update_task to mark as inreview in VibeKanban."
+cd ../myproject-worktrees/task-2.3-add-user-api && claude -p "Implement task 2.3: Add user API. [Include full context: description, AC, relevant PRD sections]. When done, use update_task to mark as inreview in VibeKanban." --permission-mode auto-accept
 
-cd ../myproject-worktrees/task-3.1-setup-database && claude -p "Implement task 3.1: Setup database. [Include full context]. When done, use update_task to mark as inreview in VibeKanban."
+cd ../myproject-worktrees/task-3.1-setup-database && claude -p "Implement task 3.1: Setup database. [Include full context]. When done, use update_task to mark as inreview in VibeKanban." --permission-mode auto-accept
 
-cd ../myproject-worktrees/task-4.2-add-logging && claude -p "Implement task 4.2: Add logging. [Include full context]. When done, use update_task to mark as inreview in VibeKanban."
+cd ../myproject-worktrees/task-4.2-add-logging && claude -p "Implement task 4.2: Add logging. [Include full context]. When done, use update_task to mark as inreview in VibeKanban." --permission-mode auto-accept
 ```
 
 **Option C: Manual terminals**
@@ -176,6 +212,8 @@ Terminal 3: cd ../myproject-worktrees/task-4.2-add-logging && claude
 
 In each session, use /work-task [task-id] to start the task.
 ```
+
+Note: With manual terminals, you can respond to permission prompts interactively, but you'll need to monitor all terminal windows.
 
 ### 8. Provide Post-Execution Guidance
 
