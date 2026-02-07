@@ -1,15 +1,29 @@
-# PRD-to-Tasks Workflow for Claude Code + VibeKanban
+# PRD-to-Tasks Workflow for VibeKanban
 
-A standardized workflow for managing development projects using Claude Code and VibeKanban MCP. This provides a set of global commands that help you go from PRD to tracked tasks with a living development plan.
+A structured, prompt-driven workflow for going from project idea to tracked, executable tasks using [VibeKanban](https://www.vibekanban.com/) and AI coding agents. While this repo ships as Claude Code slash commands, the underlying workflow -- PRD generation, planning, task breakdown, execution, and sync -- works with any agent that connects to VibeKanban's MCP API.
 
-## Overview
+![VibeKanban Board](docs/vibekanban-image.jpeg)
 
-This workflow bridges the gap between product requirements and task management:
+## What is VibeKanban?
+
+[VibeKanban](https://www.vibekanban.com/) is a Kanban-style project board designed for AI-assisted development. It provides an MCP (Model Context Protocol) server that lets AI agents create, update, and track tasks programmatically. Agents like Claude Code, Cursor, Codex, Gemini, and others can connect through the MCP API to:
+
+- **Create and manage tasks** directly from the agent's context
+- **Update task status** (todo, inprogress, inreview, done) as work progresses
+- **Orchestrate multiple agents** on the same project board
+- **Start workspace sessions** that pair an agent with a task and repo
+
+VibeKanban acts as the shared coordination layer -- the agent does the coding, VK tracks what's been done and what's left.
+
+## What This Repo Adds
+
+This repo provides **11 slash commands** that build a complete development pipeline on top of VibeKanban's MCP API:
 
 1. **PRD** (Product Requirements Document) defines what to build
-2. **Development Plan** breaks it down into actionable, trackable tasks
-3. **VibeKanban** tracks execution and progress
-4. **Sync** keeps everything aligned
+2. **Development Plan** breaks it down into epics, tasks, dependencies, and acceptance criteria
+3. **VibeKanban** tracks execution and progress across agents
+4. **Execution** commands let agents pick up tasks, implement them, and verify acceptance criteria
+5. **Sync** keeps the plan and board aligned with drift detection
 
 ```mermaid
 flowchart LR
@@ -419,8 +433,24 @@ And update the commands to parse/generate these.
 
 MIT License - See [LICENSE](LICENSE) for details.
 
+## Supported Agents
+
+While this repo ships as Claude Code slash commands, VibeKanban's MCP API supports orchestration with multiple agents:
+
+| Agent | MCP Support | Notes |
+|-------|-------------|-------|
+| Claude Code | Native | This repo's slash commands |
+| Cursor | Via MCP | Connect through Cursor's MCP settings |
+| Codex | Via MCP | OpenAI's CLI agent |
+| Gemini | Via MCP | Google's CLI agent |
+| Copilot | Via MCP | GitHub's agent |
+| Custom agents | Via MCP | Any agent supporting MCP tool calls |
+
+The slash commands in this repo are markdown prompt files -- they can be adapted for other agents by translating the instructions into that agent's prompt format. The MCP tool calls (`list_projects`, `create_task`, `update_task`, etc.) are the same regardless of which agent makes them.
+
 ## Related
 
-- [VibeKanban](https://www.vibekanban.com/) - Kanban board with AI agent support
+- [VibeKanban](https://www.vibekanban.com/) - Kanban board with AI agent orchestration
+- [VibeKanban MCP Docs](https://www.vibekanban.com/docs/integrations/vibe-kanban-mcp-server) - MCP server setup and API reference
 - [Claude Code](https://claude.ai/claude-code) - Anthropic's CLI for Claude
 - [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) - Protocol for AI tool integration
