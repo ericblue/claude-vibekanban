@@ -11,7 +11,7 @@ You are providing a quick progress overview of the development plan by checking 
 
 ## Current Plan
 
-!`cat docs/development-plan.md 2>/dev/null || echo "ERROR: No development plan found at docs/development-plan.md"`
+!`cat docs/development-plan.md 2>/dev/null`
 
 ## Instructions
 

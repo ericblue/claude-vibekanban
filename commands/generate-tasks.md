@@ -12,7 +12,7 @@ You are creating tasks in VibeKanban based on the development plan. This links t
 ## Prerequisites Check
 
 Development plan location:
-!`cat docs/development-plan.md 2>/dev/null | head -150 || echo "ERROR: No development plan found at docs/development-plan.md. Run /create-plan first."`
+!`head -150 docs/development-plan.md 2>/dev/null`
 
 ## Instructions
 

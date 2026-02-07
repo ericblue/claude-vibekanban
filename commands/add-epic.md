@@ -11,7 +11,7 @@ You are adding a new epic to an existing development plan. This is useful when s
 
 ## Current Plan
 
-!`cat docs/development-plan.md 2>/dev/null || echo "ERROR: No development plan found at docs/development-plan.md. Run /create-plan first."`
+!`cat docs/development-plan.md 2>/dev/null`
 
 ## Instructions
 

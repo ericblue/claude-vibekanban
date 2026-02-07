@@ -14,11 +14,11 @@ You are creating a structured development plan based on a PRD. This plan will se
 
 ## PRD Location
 
-!`ls -la docs/*.md docs/prd*.md docs/PRD*.md 2>/dev/null || echo "Checking for PRD..."`
+!`ls -la docs/*.md 2>/dev/null`
 
 ## Existing Plan Check
 
-!`ls -la docs/development-plan.md 2>/dev/null || echo "No existing plan"`
+!`ls -la docs/development-plan.md 2>/dev/null`
 
 ## Instructions
 

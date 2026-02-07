@@ -12,7 +12,7 @@ You are reviewing a Product Requirements Document (PRD) to understand the requir
 
 First, check for a PRD file in the `docs/` folder:
 
-!`ls -la docs/*.md docs/prd*.md docs/PRD*.md 2>/dev/null || echo "No PRD files found in docs/"`
+!`ls -la docs/*.md 2>/dev/null`
 
 If no PRD is found, ask the user to provide the path to the PRD file.
 

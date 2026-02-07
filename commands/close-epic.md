@@ -11,7 +11,7 @@ You are marking an epic as complete in the development plan. This involves verif
 
 ## Current Plan
 
-!`cat docs/development-plan.md 2>/dev/null || echo "ERROR: No development plan found at docs/development-plan.md"`
+!`cat docs/development-plan.md 2>/dev/null`
 
 ## Instructions
 

@@ -11,7 +11,7 @@ You are synchronizing the development plan (`docs/development-plan.md`) with Vib
 
 ## Current Plan
 
-!`cat docs/development-plan.md 2>/dev/null || echo "ERROR: No development plan found at docs/development-plan.md"`
+!`cat docs/development-plan.md 2>/dev/null`
 
 ## Instructions
 
