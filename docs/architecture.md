@@ -26,6 +26,8 @@ State is stored in three places:
 
 **Source of truth:** VibeKanban owns task status. The plan file is the reference for structure, dependencies, and acceptance criteria. `/sync-plan` reconciles the two.
 
+**Why maintain both?** The development plan exists as a portable, self-contained project briefing. It can be shared with collaborators, handed to any LLM (whether or not it has VK/MCP access), pasted into a GitHub issue, or read by a new agent that only has filesystem access. VK owns task status; the plan provides the full context -- epics, dependencies, acceptance criteria, progress -- in a single file that works everywhere. The sync keeps this portable artifact accurate.
+
 ### Context Assembly
 
 When executing a task (`/work-task` or `/work-next`), the agent assembles context from multiple sources:
@@ -202,6 +204,59 @@ The worktree directory name mirrors the branch name. `/work-parallel` reports al
 - Shared git history and remote connections across all worktrees
 - User always has final say on what runs and how many
 
+**Permissions and user input:**
+
+Parallel sessions need to run with minimal interruption. Permission prompts that block on user input are a practical problem when multiple sessions are running simultaneously.
+
+| Launch mechanism | Permission handling | User input |
+|--|--|--|
+| **Agent Teams** | Teammates inherit the lead's permission mode. Prompts bubble up to the lead. | Teammates can message the lead to ask questions. Lead relays to user if needed. |
+| **Headless `claude -p`** | Non-interactive -- **cannot respond to permission prompts**. Sessions will block or fail. | No user input possible. Agent must work fully autonomously. |
+| **Manual terminals** | Normal interactive prompts in each terminal. | User switches between terminals to respond. |
+
+**For headless mode**, one of these is required:
+
+- `claude -p --dangerously-skip-permissions` -- skips all permission checks. Fast but risky; use only for trusted, well-scoped tasks.
+- Pre-configured `~/.claude/settings.json` with `allowedTools` that includes the tools the agent needs (Bash, Write, Edit, MCP tools, etc.) -- more controlled than skipping all permissions.
+- `--permission-mode auto-accept` -- accepts all tool calls without prompting.
+
+**For Agent Teams**, set the lead's permission mode before spawning teammates. All teammates inherit it. `--dangerously-skip-permissions` on the lead propagates to all teammates.
+
+**For manual terminals**, the user can respond to prompts in each terminal, but must actively monitor all sessions. This works best with 2-3 sessions.
+
+**When a session needs clarification (not just permissions):** If the agent encounters ambiguity or needs a design decision, behavior depends on the mechanism:
+- **Agent Teams**: Teammate messages the lead, which can relay to the user or make a decision.
+- **Headless mode**: Session fails or makes a best-guess decision. To avoid this, ensure task descriptions and acceptance criteria are detailed enough for autonomous work.
+- **Manual terminals**: Agent prompts in that terminal. User switches to respond.
+
+**Observability and session monitoring:**
+
+A key practical concern with parallel sessions is visibility: how do you know what a session is doing, whether it's stuck, or what it produced?
+
+| Launch mechanism | Real-time visibility | Attach mid-session | Post-session output |
+|--|--|--|--|
+| **Agent Teams** | Teammate messages appear in the lead's session | No direct attach; lead sees messages but not full session activity | No persistent log (team state is lost on cleanup) |
+| **Headless `claude -p`** | Redirect stdout to a log file and `tail -f` | No interactive attach; read-only log tailing only | Output file if redirected; `--output-format stream-json` for structured output |
+| **Manual terminals** | Full visibility (you're watching each terminal) | Already attached | Terminal scrollback |
+
+There is no `tmux attach`-style mechanism to jump into a running Claude Code session. This is a known gap.
+
+**Practical mitigations:**
+
+- **For headless sessions**, always redirect output to a log file:
+  ```bash
+  claude -p "..." --permission-mode auto-accept > ../myproject-worktrees/task-2.3.log 2>&1
+  ```
+  Then monitor with `tail -f ../myproject-worktrees/task-2.3.log`. Use `--output-format stream-json` for structured JSON output that's easier to parse programmatically.
+
+- **For Agent Teams**, the lead acts as a natural aggregation point. Teammates message the lead with progress updates. The lead can relay status to the user.
+
+- **For manual terminals**, use a terminal multiplexer like `tmux` or iTerm2 split panes to watch all sessions simultaneously.
+
+- **VK task status is always available** regardless of launch mechanism. All sessions update VK via `update_task`, so running `/session-status` or checking the VK board shows which tasks are `inprogress`, `inreview`, or `done` -- even when you can't see the session output directly.
+
+- **Git activity is observable.** Since each session works in its own worktree, you can check branch activity: `git -C ../myproject-worktrees/task-2.3-add-user-api log --oneline -5` shows recent commits, which is a good proxy for progress.
+
 **Considerations:**
 
 - Each worktree may need its own environment setup (dependency install, etc.)
@@ -348,6 +403,62 @@ This gives you structured decomposition + real-time coordination + persistent tr
 | Multi-agent-type orchestration (Cursor + Claude + Codex) | This workflow (Tier 2) |
 | Real-time agent collaboration and debate | Agent Teams |
 | Structured task execution with AC verification | This workflow |
+
+## Human-in-the-Loop Philosophy
+
+### Why human oversight is central to this workflow
+
+Every command in this workflow includes explicit human decision points. This is a deliberate design choice, not a limitation. The workflow is built around the principle that **AI should handle the grunt work while humans make the judgment calls**.
+
+### Where humans are in the loop
+
+| Phase | Human role | What the agent handles |
+|-------|-----------|----------------------|
+| **PRD generation** (`/generate-prd`) | Answers interview questions, provides domain knowledge | Structures requirements, identifies gaps |
+| **PRD review** (`/prd-review`) | Responds to clarifying questions, refines scope | Identifies ambiguities, suggests epic structure |
+| **Plan creation** (`/create-plan`) | Reviews and approves the plan | Generates epics, tasks, dependencies, AC |
+| **Task generation** (`/generate-tasks`) | Approves task creation | Creates VK tasks, links them to the plan |
+| **Task selection** (`/next-task`, `/work-next`) | Confirms or overrides the recommended task | Scores candidates, considers dependencies/priority/complexity |
+| **Task execution** (`/work-task`, `/work-next`) | Reviews implementation, decides when to mark done | Implements code, verifies acceptance criteria |
+| **Parallel setup** (`/work-parallel`) | Reviews candidate set, adjusts count, chooses permissions, confirms | Analyzes dependencies, identifies safe parallelization |
+| **Code review** (post-execution) | Reviews diffs, tests branches, merges to main | Marks tasks `inreview`, creates PRs |
+| **Plan sync** (`/sync-plan`) | Reviews drift reports, decides on corrections | Detects stale tasks, dependency violations, scope drift |
+
+### Key design decisions reflecting this philosophy
+
+1. **Confirm before execute.** `/work-next` presents the recommended task and waits for confirmation before writing any code. `/work-parallel` shows the full execution plan and does not create worktrees until the user explicitly approves.
+
+2. **`inreview` as a first-class status.** The workflow distinguishes "agent says it's done" from "human verified it's done." For parallel and branched work, tasks go to `inreview` first. The human reviews, tests, and only then marks `done`. This is the quality gate.
+
+3. **Dependencies are warnings, not blocks.** The agent warns when dependencies aren't met but lets the user proceed. Humans understand context that dependency graphs can't capture -- maybe the dependency is nearly done, or the task can be partially implemented without it.
+
+4. **No autonomous loops.** The commands do not loop automatically. Each task requires a new invocation (`/work-next` again). There is no "run until the backlog is empty" mode. This prevents runaway token consumption, ensures the human stays engaged with progress, and makes it easy to pause and redirect.
+
+5. **Permission model is explicit.** For parallel sessions, the user explicitly chooses how permissions are handled. Even the most permissive option (`--dangerously-skip-permissions`) requires a conscious user decision during the `/work-parallel` setup flow.
+
+### Comparison with fully autonomous approaches
+
+Some tools, like [Ralph](https://github.com/frankbria/ralph-claude-code), take a different approach: continuous autonomous execution loops where the agent iterates on the project with minimal human intervention.
+
+| Aspect | This workflow | Fully autonomous (e.g., Ralph) |
+|--------|--------------|-------------------------------|
+| **Execution model** | Human confirms each step; no auto-loop | Continuous loop; agent iterates until EXIT_SIGNAL |
+| **Planning** | Structured pipeline: PRD → plan → tasks → execute | Reads a prompt file (PROMPT.md); no structured decomposition |
+| **Task selection** | Human approves recommended task before execution | Agent decides what to work on next |
+| **Quality gates** | `inreview` status, AC verification, human review | Circuit breakers, rate limits, stuck-loop detection |
+| **Safety mechanism** | Human judgment at decision points | Automated guardrails (rate limiting, error detection, session expiry) |
+| **Progress tracking** | VK board + plan file with drift detection | Git commits counted as progress, checkbox completion |
+| **Parallel execution** | Structured: dependency analysis, worktrees, user-approved sets | Sequential within a single loop |
+| **Token management** | Human controls scope (task count, parallelism cap) | Rate limiting (100 calls/hour), session timeout (24h) |
+| **Best for** | Projects needing structured planning, quality gates, and multi-agent coordination | Rapid iteration on well-scoped tasks where speed matters more than review |
+
+Neither approach is universally better. The right choice depends on the project's risk tolerance, complexity, and how much human judgment the work requires:
+
+- **Use a human-in-the-loop workflow (this project)** when: the project needs structured planning and decomposition, tasks have complex dependencies, quality matters more than speed, you want persistent tracking across sessions, or you're coordinating multiple agents/agent types.
+
+- **Use a fully autonomous loop** when: the project scope is well-defined and contained in a prompt file, tasks are straightforward enough that the agent can self-evaluate, speed of iteration matters more than review, and you trust the agent to make good decisions within the guardrails.
+
+- **They can complement each other.** Use this workflow for the planning phase (PRD → plan → tasks), then use an autonomous loop for execution of individual well-scoped tasks. The structured planning ensures each task handed to the autonomous loop has clear acceptance criteria and boundaries.
 
 ## Summary
 
