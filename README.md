@@ -452,7 +452,8 @@ The slash commands in this repo are markdown prompt files -- they can be adapted
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | 2025-06-01 | Initial release with 7 core commands: `/prd-review`, `/create-plan`, `/generate-tasks`, `/sync-plan`, `/plan-status`, `/add-epic`, `/close-epic` |
+| 0.1-alpha | 2025-12-27 | Alpha release with initial command structure and workflow design |
+| 1.0 | 2026-01-22 | Initial release with 7 core commands: `/prd-review`, `/create-plan`, `/generate-tasks`, `/sync-plan`, `/plan-status`, `/add-epic`, `/close-epic` |
 | 2.0 | 2026-02-06 | Added `/generate-prd` (interview-style PRD creation) and `/next-task` (priority-based task recommendation). Enhanced `/create-plan` with Complexity and Depends On columns, per-task acceptance criteria in Task Details sections. Enhanced `/sync-plan` with drift detection (stale tasks, dependency violations, blocked tasks ready to start, scope drift). Fixed MCP tool name prefix (`mcp__vibe_kanban__`) across all commands. Replaced inline bash execution with tool instructions to fix permission errors. |
 | 2.1 | 2026-02-06 | Added `/work-task` and `/work-next` execution commands for autonomous task implementation with full context assembly and AC verification. Expanded README with VibeKanban overview, multi-agent support table, and board screenshot. |
 
