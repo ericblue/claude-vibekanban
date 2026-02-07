@@ -17,7 +17,7 @@ VibeKanban acts as the shared coordination layer -- the agent does the coding, V
 
 ## What This Repo Adds
 
-This repo provides **11 slash commands** that build a complete development pipeline on top of VibeKanban's MCP API:
+This repo provides **16 slash commands** (12 core + 4 experimental) that build a complete development pipeline on top of VibeKanban's MCP API:
 
 1. **PRD** (Product Requirements Document) defines what to build
 2. **Development Plan** breaks it down into epics, tasks, dependencies, and acceptance criteria
@@ -74,6 +74,22 @@ flowchart LR
 | `/next-task` | Recommend the best next task based on priority, complexity, and dependencies |
 | `/add-epic` | Add a new epic to an existing development plan |
 | `/close-epic` | Mark an epic as complete after verifying all tasks are done |
+
+### Parallel Execution (Experimental)
+
+> **Early preview** -- these commands are experimental and actively evolving. Expect breaking changes over the next few weeks as the execution model is tested and refined. See [docs/architecture.md](docs/architecture.md) for the full design.
+
+| Command | Description |
+|---------|-------------|
+| `/work-parallel` | Analyze backlog, identify independent tasks, set up worktrees, and launch parallel sessions |
+| `/delegate-task` | Delegate a task to a separate VibeKanban workspace session (any supported agent) |
+| `/delegate-batch` | Delegate multiple independent tasks to parallel workspace sessions |
+| `/session-status` | Check status of all active workspace sessions |
+
+Two execution tiers are supported:
+
+- **Tier 1 (Local worktrees):** Parallel Claude Code sessions using [git worktrees](https://git-scm.com/docs/git-worktree) for full file isolation. Each task gets its own branch and working directory.
+- **Tier 2 (Remote delegation):** Spawn separate agent sessions via VibeKanban's `start_workspace_session`. Supports Claude Code, Cursor, Codex, Gemini, Copilot, and custom agents.
 
 ### Help
 
@@ -462,6 +478,12 @@ The slash commands in this repo are markdown prompt files -- they can be adapted
 | 0.1 | 2026-01-22 | Initial release with 7 core commands: `/prd-review`, `/create-plan`, `/generate-tasks`, `/sync-plan`, `/plan-status`, `/add-epic`, `/close-epic` |
 | 0.2 | 2026-02-06 | Added `/generate-prd` (interview-style PRD creation) and `/next-task` (priority-based task recommendation). Enhanced `/create-plan` with Complexity and Depends On columns, per-task acceptance criteria in Task Details sections. Enhanced `/sync-plan` with drift detection (stale tasks, dependency violations, blocked tasks ready to start, scope drift). Fixed MCP tool name prefix (`mcp__vibe_kanban__`) across all commands. Replaced inline bash execution with tool instructions to fix permission errors. |
 | 0.21 | 2026-02-06 | Added `/work-task` and `/work-next` execution commands for autonomous task implementation with full context assembly and AC verification. Expanded README with VibeKanban overview, multi-agent support table, and board screenshot. |
+| 0.3-preview | 2026-02-07 | Experimental parallel execution commands: `/work-parallel` (local worktrees + full CC sessions), `/delegate-task`, `/delegate-batch`, `/session-status` (VK workspace sessions). Two-tier execution model. Added [architecture doc](docs/architecture.md) and [cookbook](docs/cookbook.md). These commands are early preview and actively evolving. |
+
+## Documentation
+
+- **[Cookbook](docs/cookbook.md)** -- Walkthroughs, recipes, tips, FAQ, and troubleshooting
+- **[Architecture](docs/architecture.md)** -- Execution model, two-tier parallel execution design, known limitations, and future direction for multi-agent orchestration
 
 ## Related
 
