@@ -17,7 +17,7 @@ VibeKanban acts as the shared coordination layer -- the agent does the coding, V
 
 ## What This Repo Adds
 
-This repo provides **16 slash commands** (12 core + 4 experimental) that build a complete development pipeline on top of VibeKanban's MCP API:
+This repo provides **17 slash commands** (12 core + 5 experimental) that build a complete development pipeline on top of VibeKanban's MCP API:
 
 1. **PRD** (Product Requirements Document) defines what to build
 2. **Development Plan** breaks it down into epics, tasks, dependencies, and acceptance criteria
@@ -82,6 +82,7 @@ flowchart LR
 | Command | Description |
 |---------|-------------|
 | `/work-parallel` | Analyze backlog, identify independent tasks, set up worktrees, mark tasks in progress, and auto-launch parallel sessions (screen/tmux/background) |
+| `/merge-parallel` | Merge worktree branches to main, run tests, update VK status, and clean up worktrees/sessions |
 | `/delegate-task` | Delegate a task to a separate VibeKanban workspace session (any supported agent) |
 | `/delegate-batch` | Delegate multiple independent tasks to parallel workspace sessions |
 | `/session-status` | Check status of all active workspace sessions |
@@ -480,6 +481,7 @@ The slash commands in this repo are markdown prompt files -- they can be adapted
 | 0.21 | 2026-02-06 | Added `/work-task` and `/work-next` execution commands for autonomous task implementation with full context assembly and AC verification. Expanded README with VibeKanban overview, multi-agent support table, and board screenshot. |
 | 0.3-preview | 2026-02-07 | Experimental parallel execution commands: `/work-parallel` (local worktrees + full CC sessions), `/delegate-task`, `/delegate-batch`, `/session-status` (VK workspace sessions). Two-tier execution model. Added [architecture doc](docs/architecture.md) and [cookbook](docs/cookbook.md). These commands are early preview and actively evolving. |
 | 0.4-preview | 2026-02-07 | `/work-parallel`: Auto-launch sessions via screen/tmux with failure detection and interactive recovery. Tasks marked `inprogress` in VK before session launch. Runtime detection of screen -> tmux -> background fallback. `/session-status`: Detects active screen/tmux sessions, shows attach commands, flags sessions without activity. Updated architecture docs and cookbook with screen/tmux observability model. |
+| 0.5-preview | 2026-02-07 | New `/merge-parallel` command: merge worktree branches to main with sequential merging, optional test commands, VK status updates, and worktree/session cleanup. `/work-parallel`: Added `SESSION_STATUS:` log markers for completion detection, hooks note for Agent Teams, streamlined post-execution guidance. `/session-status`: Added completion detection heuristic table cross-referencing session state + VK status + log markers, `/merge-parallel` suggestions. Cookbook: New recipes for `/merge-parallel` usage and quality gates with `TaskCompleted` hooks. |
 
 ## Documentation
 

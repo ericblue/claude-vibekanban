@@ -1,7 +1,7 @@
 ---
 description: Check status of all active work across local worktrees and VK sessions
 allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks, mcp__vibe_kanban__get_task
-version: 0.4-preview
+version: 0.5-preview
 date: 2026-02-07
 author: Eric Blue (https://github.com/ericblue)
 repository: https://github.com/ericblue/claude-vibekanban
@@ -58,6 +58,33 @@ Check for active screen or tmux sessions that match the `claude-task-*` naming c
    - **Detached** -- session is running unattended (normal for `claude -p`)
    - **No session found** -- session completed (exited cleanly) or was never launched via screen/tmux
 
+### 3.6 Determine Completion Status
+
+Cross-reference session state, VK status, and log files to determine a completion heuristic for each task:
+
+| Session State | VK Status | Log Evidence | Completion Status |
+|---------------|-----------|--------------|-------------------|
+| No session | `inreview` or `done` | Log exists | **Completed** -- session finished normally |
+| No session | `inprogress` | Log ends with `SESSION_STATUS: FAILED` or error | **Failed** -- session crashed or errored |
+| No session | `inprogress` | Log ends with `SESSION_STATUS: COMPLETED` | **Completed** -- session finished but didn't update VK |
+| No session | `inprogress` | No log or log has no status marker | **Unknown** -- may have completed or crashed without logging |
+| Detached | `inprogress` | Log file growing (modified recently) | **Running** -- session is actively working |
+| Detached | `inprogress` | Log file stale (not modified in 10+ min) | **Possibly stuck** -- may need investigation |
+| Detached | `inreview` or `done` | Any | **Completed (session lingering)** -- work done, session still alive (possibly in recovery mode) |
+| Attached | Any | Any | **Active** -- someone is observing or interacting |
+
+To check for `SESSION_STATUS:` markers in log files:
+
+```bash
+tail -5 ../<project>-worktrees/task-<id>.log 2>/dev/null | grep "SESSION_STATUS:"
+```
+
+Valid markers (written by `/work-parallel` wrapper scripts):
+- `SESSION_STATUS: COMPLETED` -- session finished successfully
+- `SESSION_STATUS: FAILED (exit code N)` -- session exited with an error
+
+Include the "Completion" column in the status tables below.
+
 ### 4. Present the Status Report
 
 ```
@@ -65,11 +92,11 @@ Check for active screen or tmux sessions that match the `claude-task-*` naming c
 
 ### In Progress (3 tasks)
 
-| Task | Status | Type | Location | Session |
-|------|--------|------|----------|---------|
-| 2.3 - Add user API | inprogress | Worktree | ../myproject-worktrees/task-2.3-add-user-api/ | `screen -r claude-task-2.3` (Detached) |
-| 3.1 - Setup database | inprogress | VK Workspace | Remote (CLAUDE_CODE) | (no session found) |
-| 4.2 - Add logging | inprogress | Worktree | ../myproject-worktrees/task-4.2-add-logging/ | `screen -r claude-task-4.2` (Detached) |
+| Task | Status | Type | Location | Session | Completion |
+|------|--------|------|----------|---------|------------|
+| 2.3 - Add user API | inprogress | Worktree | ../myproject-worktrees/task-2.3-add-user-api/ | `screen -r claude-task-2.3` (Detached) | Running |
+| 3.1 - Setup database | inprogress | VK Workspace | Remote (CLAUDE_CODE) | (no session found) | Unknown |
+| 4.2 - Add logging | inprogress | Worktree | ../myproject-worktrees/task-4.2-add-logging/ | `screen -r claude-task-4.2` (Detached) | Running |
 
 ### In Review (1 task)
 
@@ -117,6 +144,14 @@ ls ../myproject-worktrees/*.log 2>/dev/null
 
 If log files exist, report their last modification time and tail the last few lines to show recent activity.
 
+**Check for `SESSION_STATUS:` markers** in log files to determine definitive completion:
+
+```bash
+tail -5 ../<project>-worktrees/task-<id>.log 2>/dev/null | grep "SESSION_STATUS:"
+```
+
+If a log file contains `SESSION_STATUS: COMPLETED`, the session finished successfully (even if VK wasn't updated). If it contains `SESSION_STATUS: FAILED (exit code N)`, the session errored. Use these markers to refine the completion heuristic from step 3.6.
+
 Report this as a "Session Activity" section:
 
 ```
@@ -147,6 +182,7 @@ Based on the status, suggest relevant next steps:
 - **Blocked tasks about to unblock**: "When task 2.3 completes, task 2.4 will be ready to start."
 - **No active work**: "No tasks are in progress. Run `/work-next` to start the next task, or `/work-parallel` for parallel execution."
 - **Many tasks in review**: "You have [N] tasks waiting for review. Consider reviewing and merging them before starting more work."
+- **Multiple tasks ready to merge**: If 2+ tasks are `inreview` or `done` with active worktrees, suggest: "Multiple tasks are ready to merge. Run `/merge-parallel` to merge, test, and clean up all branches at once."
 - **Stale in-progress tasks**: If tasks have been `inprogress` without a corresponding worktree or active session, flag them: "Task [X] is marked in progress but has no active worktree or session. It may be stale."
 - **Active screen/tmux session, observe progress**: "Task 2.3 has an active screen session. Attach to observe: `screen -r claude-task-2.3` (Ctrl-A D to detach)."
 - **Session ended but task still inprogress**: "Task 4.2 has no active screen session but is still `inprogress` in VK. The session may have completed without updating VK, or it may have crashed. Check the log file (`tail -20 ../<project>-worktrees/task-4.2.log`) and either relaunch or update the task status manually."
@@ -165,6 +201,8 @@ These worktrees can be removed (tasks are done/merged):
 Or clean up all finished worktrees:
 - git worktree prune
 ```
+
+For tasks in `inreview` or `done` that haven't been merged yet, suggest: "Consider running `/merge-parallel` to merge branches, update VK, and clean up worktrees in one step."
 
 ### 8. Handle Edge Cases
 

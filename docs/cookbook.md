@@ -78,6 +78,12 @@ Or specify tasks explicitly:
 
 Review the proposed set, adjust if needed, confirm, and parallel sessions launch in isolated git worktrees.
 
+After sessions complete, merge everything back:
+
+```
+/merge-parallel            # merge branches, test, update VK, clean up
+```
+
 ### Want to delegate tasks to remote agents (experimental)
 
 Hand off a task to a VibeKanban workspace session:
@@ -314,13 +320,17 @@ tail -f ../myproject-worktrees/task-2.3.log   # watch log file
 
 When tasks move to `inreview`, `cd` into each worktree to review, test, and merge branches back to main sequentially.
 
-**Step 7: Clean up**
+**Step 7: Merge and clean up**
 
-After merging, remove worktrees:
+When tasks are in `inreview` or `done`, merge all branches back to main:
 
-```bash
-git worktree remove ../myproject-worktrees/task-2.3-add-user-api
 ```
+/merge-parallel
+```
+
+This merges branches sequentially, optionally runs tests after each merge, updates VK status to `done`, and offers to clean up worktrees, branches, and sessions. If a conflict occurs, resolve it and re-run -- already-merged branches are skipped.
+
+For manual merging, see the "Merging parallel branches safely" recipe below.
 
 ---
 
@@ -654,6 +664,83 @@ When multiple worktree branches are ready to merge:
 6. Repeat for remaining branches
 
 **Tip:** Merge the smallest/most isolated branches first to minimize cascading conflicts.
+
+### Recipe: Merging parallel branches with /merge-parallel
+
+For an automated merge-test-cleanup cycle, use `/merge-parallel` instead of manual merging:
+
+```
+/merge-parallel
+```
+
+This command:
+1. Detects all worktree branches and cross-references with VK status
+2. Identifies merge-ready branches (`inreview` or `done`) and skips in-progress ones
+3. Presents a merge plan sorted by simplest first (fewest commits)
+4. Asks for an optional test command and merge strategy (merge or rebase)
+5. Merges branches sequentially, stopping on conflicts
+6. Updates VK task status to `done`
+7. Offers to clean up worktrees, branches, and sessions
+
+**When to use automated vs manual merging:**
+
+| Scenario | Approach |
+|----------|----------|
+| Multiple branches ready, want speed | `/merge-parallel` |
+| Need to cherry-pick specific commits | Manual merge |
+| Expect complex conflicts requiring careful resolution | Manual merge (but `/merge-parallel` stops on conflicts too) |
+| Want to test each branch individually before merging | Manual review first, then `/merge-parallel` |
+
+**Tip:** Always run `/merge-parallel` from the main project directory, not from inside a worktree.
+
+### Recipe: Quality gates with TaskCompleted hooks
+
+Claude Code hooks can run scripts automatically in response to agent events. You can use this to add per-task quality gates that run tests when a session finishes its work.
+
+**How hooks work:** Claude Code supports hooks that execute shell commands at defined points in the agent lifecycle. The `TaskCompleted` event fires when a subagent (teammate) finishes its assigned work.
+
+**Example `.claude/settings.json` hook configuration:**
+
+```json
+{
+  "hooks": {
+    "TaskCompleted": [
+      {
+        "command": ".claude/quality-gate.sh"
+      }
+    ]
+  }
+}
+```
+
+**Example `quality-gate.sh` script:**
+
+```bash
+#!/bin/bash
+# Run tests as a quality gate when a task completes
+echo "Running quality gate..."
+
+# Run your project's test suite
+npm test 2>&1
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+  echo "QUALITY GATE FAILED: Tests did not pass (exit code $EXIT_CODE)"
+  exit 1
+else
+  echo "QUALITY GATE PASSED: All tests passing"
+  exit 0
+fi
+```
+
+**Two-tier quality gates with `/merge-parallel`:**
+
+1. **Per-task gate (hook):** Each agent session runs tests on its own branch when it completes. Catches task-level regressions immediately.
+2. **Integration gate (`/merge-parallel`):** After merging each branch to main, run the test command to catch cross-branch integration issues.
+
+This gives you quality checks at both the individual task level and the integration level.
+
+**Caveat:** The hooks configuration format may evolve with future Claude Code versions. Check the Claude Code documentation for the latest syntax.
 
 ---
 
@@ -1062,6 +1149,18 @@ git pull
 3. Check that the executor type is supported (CLAUDE_CODE, CURSOR_AGENT, CODEX, GEMINI, COPILOT, DROID)
 4. Verify the base branch exists and is accessible
 
+### `/merge-parallel` stops at conflicts
+
+**Problem:** `/merge-parallel` stops mid-way through merging branches due to a conflict.
+
+**Fix:** This is by design. Merge conflicts require human judgment to resolve correctly.
+
+1. Look at the conflicting files listed in the output
+2. Resolve the conflicts manually (`git add <resolved-files> && git commit` for merge, or `git add <resolved-files> && git rebase --continue` for rebase)
+3. Re-run `/merge-parallel` -- it will detect already-merged branches and skip them, continuing with the remaining branches
+
+**Tip:** If you expect many conflicts, consider merging the simplest/most isolated branches first (the default order) to minimize cascading conflicts.
+
 ### Stale worktrees after sessions complete
 
 **Problem:** Worktrees remain after tasks are done, cluttering the filesystem.
@@ -1100,6 +1199,7 @@ Run `/session-status` to see which worktrees correspond to completed tasks and c
 | Command | Input | Modifies Plan | Modifies VK | Modifies Code | Creates Worktrees |
 |---------|-------|:---:|:---:|:---:|:---:|
 | `/work-parallel` | Task IDs (optional) | No | Yes (marks inprogress) | Yes (in worktrees) | Yes |
+| `/merge-parallel` | None | No | Yes (marks done) | No | No (removes) |
 | `/delegate-task` | Task ID or title | No | Yes (starts session) | Yes (remote) | No |
 | `/delegate-batch` | Task IDs or titles | No | Yes (starts sessions) | Yes (remote) | No |
 | `/session-status` | None | No | No | No | No |

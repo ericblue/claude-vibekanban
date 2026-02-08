@@ -115,7 +115,7 @@ This means the **backend infrastructure for multi-agent orchestration exists**.
 Currently, **none of the slash commands invoke `start_workspace_session`**. All task execution happens directly in the user's Claude Code session via `/work-task` and `/work-next`. The MCP tools used are limited to:
 
 - `list_projects`, `list_tasks`, `get_task` -- reading state
-- `create_task`, `update_task` -- writing state
+- `create_task`, `update_task` -- writing state (used by `/work-task`, `/work-next`, `/work-parallel`, `/merge-parallel`)
 
 ### The Gap
 
@@ -195,6 +195,7 @@ The worktree directory name mirrors the branch name. `/work-parallel` reports al
 5. Each session has MCP access and implements its task with full context (PRD, plan, acceptance criteria)
 6. Sessions update VibeKanban status directly via `update_task` (mark `inreview` when done)
 7. After review and merge, clean up worktrees (`git worktree remove ../<project>-worktrees/task-2.3-add-user-api`)
+8. Run `/merge-parallel` to merge ready branches to main, run tests, update VK status to `done`, and clean up worktrees and sessions
 
 **Strengths:**
 
@@ -318,9 +319,10 @@ This separation keeps the commands portable and independent. VK is the shared bo
 | Command | Tier | Description |
 |---------|------|-------------|
 | `/work-parallel` | 1 | Analyze backlog, identify independent tasks, set up worktrees, and launch parallel Claude Code sessions |
+| `/merge-parallel` | 1 | Merge worktree branches to main, run tests, update VK status, and clean up worktrees/sessions |
 | `/delegate-task` | 2 | Start a VK workspace session for a specific task with a chosen agent |
 | `/delegate-batch` | 2 | Delegate multiple independent tasks to parallel workspace sessions |
-| `/session-status` | 2 | Check status of all active workspace sessions |
+| `/session-status` | 1+2 | Check status of all active workspace sessions |
 
 ### Areas Requiring Further Testing
 
@@ -328,7 +330,7 @@ The following need validation before these commands are production-ready:
 
 1. **Tier 1 -- Worktree lifecycle:** What's the best automation for creating, setting up (dependency install), and tearing down worktrees per task? How should branch naming conventions work?
 
-2. **Tier 1 -- Merge strategy:** When multiple worktree branches are ready, what's the best merge order? How should merge conflicts between concurrent task branches be handled?
+2. **Tier 1 -- Merge strategy:** `/merge-parallel` automates sequential merging (simplest-first ordering) with conflict detection and optional test commands. Open questions: How well does the simplest-first heuristic minimize cascading conflicts in practice? Should the command support more sophisticated merge ordering strategies?
 
 3. **Tier 1 -- Environment setup:** Each worktree may need its own dependency install, dev server, etc. How much of this can be automated?
 

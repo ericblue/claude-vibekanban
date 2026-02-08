@@ -1,7 +1,7 @@
 ---
 description: Analyze backlog, identify independent tasks, set up worktrees, and launch parallel sessions
 allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks, mcp__vibe_kanban__get_task, mcp__vibe_kanban__update_task, mcp__vibe_kanban__list_repos
-version: 0.4-preview
+version: 0.5-preview
 date: 2026-02-07
 author: Eric Blue (https://github.com/ericblue)
 repository: https://github.com/ericblue/claude-vibekanban
@@ -209,6 +209,8 @@ Create an agent team with 3 teammates. Each teammate should work in a separate w
 
 Note: The lead's permission mode propagates to all teammates. If the lead uses `--dangerously-skip-permissions`, all teammates do too.
 
+**Tip:** For per-task quality gates, consider configuring Claude Code `TaskCompleted` hooks to run tests automatically when each teammate finishes. See the cookbook recipe "Quality gates with TaskCompleted hooks" in `docs/cookbook.md` for details.
+
 **Option B: Auto-launched sessions (screen/tmux/background)**
 
 Detect and use the best available session manager at runtime. Check in order: `which screen` -> `which tmux` -> fallback to background processes with log files.
@@ -238,12 +240,16 @@ screen -dmS claude-task-2.3 -L -Logfile ../<project>-worktrees/task-2.3.log bash
   EXIT_CODE=$?
   if [ $EXIT_CODE -ne 0 ]; then
     echo ""
+    echo "SESSION_STATUS: FAILED (exit code $EXIT_CODE)"
     echo "================================================"
     echo "Session exited with error (code $EXIT_CODE)."
     echo "Launching interactive Claude for recovery."
     echo "Attach with: screen -r claude-task-2.3"
     echo "================================================"
     claude
+  else
+    echo ""
+    echo "SESSION_STATUS: COMPLETED"
   fi
 '
 ```
@@ -272,12 +278,16 @@ tmux new-session -d -s claude-task-2.3 bash -c '
   EXIT_CODE=$?
   if [ $EXIT_CODE -ne 0 ]; then
     echo ""
+    echo "SESSION_STATUS: FAILED (exit code $EXIT_CODE)"
     echo "================================================"
     echo "Session exited with error (code $EXIT_CODE)."
     echo "Launching interactive Claude for recovery."
     echo "Attach with: tmux attach -t claude-task-2.3"
     echo "================================================"
     claude
+  else
+    echo ""
+    echo "SESSION_STATUS: COMPLETED"
   fi
 '
 tmux pipe-pane -t claude-task-2.3 "cat >> ../<project>-worktrees/task-2.3.log"
@@ -288,7 +298,7 @@ tmux pipe-pane -t claude-task-2.3 "cat >> ../<project>-worktrees/task-2.3.log"
 Run sessions as background processes with log file redirection. No interactive recovery is available in this mode:
 
 ```bash
-cd ../<project>-worktrees/task-2.3-add-user-api && claude -p "<prompt>" --permission-mode bypassPermissions > ../<project>-worktrees/task-2.3.log 2>&1 &
+cd ../<project>-worktrees/task-2.3-add-user-api && (claude -p "<prompt>" --permission-mode bypassPermissions 2>&1; EXIT_CODE=$?; if [ $EXIT_CODE -ne 0 ]; then echo "SESSION_STATUS: FAILED (exit code $EXIT_CODE)"; else echo "SESSION_STATUS: COMPLETED"; fi) > ../<project>-worktrees/task-2.3.log 2>&1 &
 ```
 
 Warn the user: "Neither screen nor tmux was found. Sessions will run as background processes. You can monitor progress via log files (`tail -f ../<project>-worktrees/task-2.3.log`) but cannot attach to sessions interactively. Consider installing screen or tmux for a better experience."
@@ -340,16 +350,8 @@ After launching sessions, remind the user about monitoring and the review-before
 4. **Review**: When tasks move to `inreview`, test each branch:
    - cd into the worktree, run tests, verify behavior
    - Use VK's diff view and inline commenting for code review
-5. **Merge sequentially**:
-   - Merge the first branch to main
-   - Rebase the next branch onto main: `git rebase main`
-   - Resolve any conflicts (watch for shared files: registries, configs, index files)
-   - Repeat for remaining branches
+5. **Merge and clean up**: Run `/merge-parallel` to merge all ready branches, run tests, update VK status, and clean up worktrees and sessions in one step
 6. **Sync**: Run `/sync-plan` after all branches are merged
-7. **Clean up**: Remove worktrees and sessions when done:
-   - `git worktree remove ../myproject-worktrees/task-2.3-add-user-api`
-   - Or remove all: `rm -rf ../myproject-worktrees/ && git worktree prune`
-   - Kill leftover screen sessions: `screen -X -S claude-task-2.3 quit`
 ```
 
 ### 11. Handle Edge Cases
