@@ -4,6 +4,22 @@ A structured, prompt-driven workflow for going from project idea to tracked, exe
 
 ![VibeKanban Board](docs/vibekanban-image.jpeg)
 
+## Why use this?
+
+This is a **lightweight workflow, not a platform**. There's no app to install, no server to run, no database to manage -- just markdown-based slash commands that plug into Claude Code. The entire system is a process and methodology with minimal overhead.
+
+Most AI coding tools help you **write code faster**. This helps you **decide what to build, break it down, and coordinate the work** -- then lets any AI agent do the coding.
+
+- **Zero infrastructure** -- slash commands are markdown files you drop into Claude Code. No build step, no dependencies.
+- **Structured planning** -- starts with PRD generation, epic decomposition, and dependency analysis, not a blank editor
+- **Persistent tracking** -- task status lives in VibeKanban across sessions, not just within a single conversation
+- **Safe parallelism** -- analyzes the dependency graph before spawning agents, so blocked tasks don't run
+- **Local and remote execution** -- run agents locally via git worktrees (Tier 1) or delegate to remote VibeKanban workspace sessions (Tier 2)
+- **Agent-agnostic** -- when using VibeKanban for delegation, any supported agent can pick up a task: Claude Code, Cursor, Codex, Gemini, Copilot, or custom agents. You're not locked to running Claude Code locally.
+- **Adaptable** -- the workflow (PRD → plan → tasks → execute → sync) is the real value, not the specific integrations. The slash commands use VibeKanban today, but the patterns could be adapted to any external task management system (Linear, Jira, GitHub Issues) by swapping the MCP layer.
+
+See [docs/comparisons.md](docs/comparisons.md) for detailed comparisons with AutoMaker, Claude Code Agent Teams, Cursor, Aider, and other tools.
+
 ## What is VibeKanban?
 
 [VibeKanban](https://www.vibekanban.com/) is a Kanban-style project board designed for AI-assisted development. It provides an MCP (Model Context Protocol) server that lets AI agents create, update, and track tasks programmatically. Agents like Claude Code, Cursor, Codex, Gemini, and others can connect through the MCP API to:
