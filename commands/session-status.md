@@ -13,7 +13,7 @@ repository: https://github.com/ericblue/claude-vibekanban
 
 ## Context
 
-You are checking the status of all active work -- both local parallel sessions (Tier 1 worktrees from `/work-parallel`) and remote delegated sessions (Tier 2 VK workspace sessions from `/delegate-task` or `/delegate-batch`). This gives the user a unified snapshot across all execution mechanisms.
+You are checking the status of all active work -- both local parallel sessions (Tier 1 worktrees from `/work-parallel`) and remote delegated sessions (Tier 2 VK workspace sessions from `/delegate-task` or `/delegate-parallel`). This gives the user a unified snapshot across all execution mechanisms.
 
 **How it works across tiers:**
 

@@ -99,7 +99,7 @@ After implementation, go through each acceptance criterion from the Task Details
 
 Run any relevant tests, builds, or checks to validate the criteria. If any criterion cannot be satisfied, explain why and ask the user how to proceed.
 
-### 7. Report and Confirm Completion
+### 7. Report, Log Results, and Confirm Completion
 
 Present a summary to the user:
 
@@ -119,9 +119,35 @@ Present a summary to the user:
 
 Then ask: **"Should I mark this task as done in VibeKanban?"**
 
-- If user confirms: Use `update_task` to set status to `done`
-- If user wants review first: Use `update_task` to set status to `inreview`
-- If user wants changes: Make the requested changes, re-verify, and ask again
+**Before updating the task status**, append a completion log to the task description in VK:
+
+1. Use `get_task` to read the current task description
+2. Use `update_task` to set the description to the original description plus a completion log section appended at the end. Use this format:
+
+```
+---
+## Completion Log
+**Agent:** Claude Code (interactive)
+**Branch:** main (or feature branch name if applicable)
+
+### Changes
+- Modified src/routes/users.ts (added validation)
+- Created tests/users.test.ts (new file)
+
+### Summary
+Implemented input validation for user endpoints...
+
+### Acceptance Criteria
+- [x] GET /users/:id returns user profile
+- [x] Input validation rejects malformed data
+```
+
+3. Then update the status based on user choice:
+   - If user confirms: Use `update_task` to set status to `done`
+   - If user wants review first: Use `update_task` to set status to `inreview`
+   - If user wants changes: Make the requested changes, re-verify, and ask again
+
+**Non-blocking on failure:** If `update_task` fails when appending the completion log, warn but continue — proceed to update the task status. Logging is best-effort; it should never block the workflow.
 
 ### 8. Handle Edge Cases
 

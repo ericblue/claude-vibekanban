@@ -95,7 +95,7 @@ Hand off a task to a VibeKanban workspace session:
 Or delegate multiple independent tasks at once:
 
 ```
-/delegate-batch 2.3 3.1 4.2
+/delegate-parallel 2.3 3.1 4.2
 ```
 
 ---
@@ -349,7 +349,7 @@ Claude looks up task 2.3, asks which agent you'd like to use (Claude Code, Curso
 **Batch delegation:**
 
 ```
-/delegate-batch 2.3 3.1 4.2
+/delegate-parallel 2.3 3.1 4.2
 ```
 
 Same as above, but for multiple tasks at once. Claude verifies independence (no mutual dependencies), asks for the executor type (same for all tasks in a batch), and launches all sessions.
@@ -742,6 +742,76 @@ This gives you quality checks at both the individual task level and the integrat
 
 **Caveat:** The hooks configuration format may evolve with future Claude Code versions. Check the Claude Code documentation for the latest syntax.
 
+### Recipe: Logging work results to VibeKanban
+
+When tasks are executed locally (Tier 1 worktrees or interactive `/work-task`), VibeKanban has no built-in visibility into what happened — no session history, no diffs, no "Attempts" like Tier 2 workspace sessions provide. As a stopgap, the workflow appends a structured **Completion Log** to the task description in VK when work finishes.
+
+**How it works:**
+
+Before marking a task as `inreview` or `done`, the agent:
+
+1. Calls `get_task` to read the current task description
+2. Appends a `## Completion Log` section to the description
+3. Calls `update_task` with the updated description
+4. Then updates the task status
+
+**What the Completion Log looks like in VK:**
+
+```
+Original task description here...
+
+---
+## Completion Log
+**Agent:** Claude Code (headless)
+**Branch:** task/2.3-add-user-api
+
+### Changes
+- Created src/routes/users.ts (new file)
+- Modified src/app.ts (added user routes)
+- Created tests/users.test.ts (new file)
+
+### Summary
+Implemented CRUD endpoints for user management with JWT auth.
+
+### Assumptions
+- Used JWT for authentication (not specified in AC)
+
+### Acceptance Criteria
+- [x] GET /users/:id returns user profile
+- [x] PUT /users/:id updates user fields
+- [x] Endpoints require valid JWT
+- [x] Input validation rejects malformed data
+
+### Merge Log
+**Merged to:** main
+**Strategy:** merge
+**Test result:** All tests passed
+**Commits merged:** 5
+**Date:** 2026-02-07
+```
+
+The Completion Log section is added by the implementing agent (headless or interactive). The Merge Log subsection is added later by `/merge-parallel` when the branch is merged to main.
+
+**Where logging happens:**
+
+| Command | What's logged | Agent field |
+|---------|---------------|-------------|
+| `/work-parallel` (headless) | Completion Log (changes, summary, AC) | `Claude Code (headless)` |
+| `/work-parallel` (Agent Teams) | Completion Log (changes, summary, AC) | `Claude Code (teammate)` |
+| `/work-task` (interactive) | Completion Log (changes, summary, AC) | `Claude Code (interactive)` |
+| `/merge-parallel` | Merge Log (strategy, test result, commits) | N/A (appended to existing log) |
+
+**This is a stopgap.** The VK MCP API currently has no comment or activity log endpoint — `update_task` only supports `title`, `description`, and `status`. Appending to the description is the only way to persist structured results. A proper VK comment/log API would enable:
+
+- Separate comments per attempt (instead of appending to description)
+- Timestamped activity history
+- Structured metadata (not embedded in markdown)
+- Clean separation between task definition and execution history
+
+Until that API exists, the description-append pattern provides basic visibility into what happened during local task execution.
+
+**Non-blocking by design:** If the description update fails, the agent warns but continues. Logging should never block the workflow.
+
 ---
 
 ## Tips and Best Practices
@@ -776,7 +846,7 @@ This gives you quality checks at both the individual task level and the integrat
 - **Merge branches one at a time.** Use the rebase-then-merge pattern. Even independent tasks often touch shared files (registries, configs, barrel exports).
 - **Run `/session-status` instead of checking each session individually.** It gives you a unified view across worktrees and VK.
 - **Redirect headless output to log files.** You'll want them for debugging when a session produces unexpected results.
-- **Use the same executor for all tasks in a batch delegation.** `/delegate-batch` applies one executor to all tasks. For mixed executors, use `/delegate-task` individually.
+- **Use the same executor for all tasks in a batch delegation.** `/delegate-parallel` applies one executor to all tasks. For mixed executors, use `/delegate-task` individually.
 - **Clean up worktrees promptly after merging.** Stale worktrees consume disk space and clutter `git worktree list` output.
 - **Don't run `/sync-plan` from multiple sessions simultaneously.** It modifies the plan file and isn't safe for concurrent writes. Run it once from your main directory after all branches are merged.
 
@@ -965,6 +1035,14 @@ Other monitoring options:
 
 See the [Architecture doc](architecture.md#observability-and-session-monitoring) for the full observability model.
 
+**Q: Why don't I see session history in VK for local tasks?**
+
+A: VibeKanban's session history, diffs, and "Attempts" view are only available for **Tier 2 workspace sessions** (launched via `/delegate-task` or `/delegate-parallel`). For **Tier 1 local work** (`/work-parallel` worktrees and `/work-task` interactive sessions), VK has no direct visibility into the agent's activity.
+
+As a workaround, the commands append a structured **Completion Log** to the task description in VK before updating the status. This log includes files changed, a summary, assumptions, and an acceptance criteria checklist. `/merge-parallel` adds a **Merge Log** subsection with merge strategy, test results, and commit count. See the recipe "Logging work results to VibeKanban" above for details.
+
+This is a stopgap — a proper VK comment/log API would be the ideal solution. If you need full session visibility, consider using Tier 2 delegation (`/delegate-task`) instead.
+
 **Q: Can parallel tasks cause merge conflicts?**
 
 A: Yes. Each parallel session works on its own branch. When merging back to main, conflicts are possible if tasks touch related files -- especially shared registries, route tables, index/barrel files, and config files. Independent tasks that modify different files merge cleanly. Use the rebase-then-merge pattern: merge one branch, rebase the next onto the updated main, resolve conflicts, repeat.
@@ -1139,7 +1217,7 @@ git pull
 3. Merge branches in order from least-conflicting to most-conflicting
 4. For severe conflicts, consider merging the branch manually and discarding the worktree
 
-### `/delegate-task` or `/delegate-batch` fails
+### `/delegate-task` or `/delegate-parallel` fails
 
 **Problem:** `start_workspace_session` returns an error.
 
@@ -1201,5 +1279,5 @@ Run `/session-status` to see which worktrees correspond to completed tasks and c
 | `/work-parallel` | Task IDs (optional) | No | Yes (marks inprogress) | Yes (in worktrees) | Yes |
 | `/merge-parallel` | None | No | Yes (marks done) | No | No (removes) |
 | `/delegate-task` | Task ID or title | No | Yes (starts session) | Yes (remote) | No |
-| `/delegate-batch` | Task IDs or titles | No | Yes (starts sessions) | Yes (remote) | No |
+| `/delegate-parallel` | Task IDs or titles | No | Yes (starts sessions) | Yes (remote) | No |
 | `/session-status` | None | No | No | No | No |

@@ -195,26 +195,64 @@ Wait for the user to choose before proceeding.
 Merged task/4.2-add-logging into <default-branch> (1/3)
 ```
 
-### 6. Update Task Status in VK
+### 6. Update Task Descriptions and Status in VK
 
-After all merges complete (or after each successful merge), update VK:
+After all merges complete (or after each successful merge), update VK with merge results and status:
 
-- For tasks that were `inreview`, mark as `done` using `update_task`
-- For tasks already `done`, no update needed
+**For each successfully merged task:**
+
+1. Use `get_task` to read the current task description (which may already have a Completion Log appended by the headless agent)
+2. Append a `### Merge Log` subsection. If a `## Completion Log` section already exists, add the Merge Log under it. If no Completion Log exists, create a `## Completion Log` section first, then add the Merge Log:
+
+```
+### Merge Log
+**Merged to:** main
+**Strategy:** merge (or rebase)
+**Test result:** All tests passed (or: Tests skipped / Tests failed — continued per user choice)
+**Commits merged:** 5
+**Date:** 2026-02-07
+```
+
+3. Use `update_task` to set the updated description
+4. For tasks that were `inreview`, use `update_task` to mark as `done`
+5. For tasks already `done`, no status update needed
+
+A fully-processed task description ends up looking like:
+
+```
+Original task description here...
+
+---
+## Completion Log
+**Agent:** Claude Code (headless)
+**Branch:** task/2.3-add-user-api
+
+### Changes
+- Created src/routes/users.ts
+- Modified src/app.ts
+...
+
+### Merge Log
+**Merged to:** main
+**Strategy:** merge
+**Test result:** All tests passed
+**Commits merged:** 5
+**Date:** 2026-02-07
+```
 
 Report results:
 
 ```
 ## VK Status Updates
 
-| Task | Previous | Updated | Result |
-|------|----------|---------|--------|
-| 4.2 - Add logging | done | done | No change needed |
-| 3.1 - Setup database | inreview | done | Updated |
-| 2.3 - Add user API | inreview | done | Updated |
+| Task | Previous | Updated | Description | Result |
+|------|----------|---------|-------------|--------|
+| 4.2 - Add logging | done | done | Merge log appended | No status change needed |
+| 3.1 - Setup database | inreview | done | Merge log appended | Updated |
+| 2.3 - Add user API | inreview | done | Merge log appended | Updated |
 ```
 
-**Non-blocking on failure:** If a VK update fails, warn the user but continue. The merge is already done in git -- VK status can be updated manually.
+**Non-blocking on failure:** If a VK update fails (description or status), warn the user but continue. The merge is already done in git -- VK can be updated manually. Logging is best-effort; it should never block the workflow.
 
 ### 7. Offer Cleanup
 

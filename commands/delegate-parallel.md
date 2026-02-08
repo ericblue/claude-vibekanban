@@ -7,13 +7,13 @@ author: Eric Blue (https://github.com/ericblue)
 repository: https://github.com/ericblue/claude-vibekanban
 ---
 
-# Delegate Batch to Workspace Sessions (Experimental)
+# Delegate Parallel to Workspace Sessions (Experimental)
 
 > **This command is experimental and actively evolving.** VK workspace session behavior is being tested. Expect changes.
 
 ## Context
 
-You are delegating multiple tasks to separate VibeKanban workspace sessions for parallel execution. This is the batch version of `/delegate-task` -- it analyzes the backlog for independent tasks, lets the user review and adjust the set, then starts a workspace session for each.
+You are delegating multiple tasks to separate VibeKanban workspace sessions for parallel execution. This is the multi-task version of `/delegate-task` -- it analyzes the backlog for independent tasks, lets the user review and adjust the set, then starts a workspace session for each.
 
 Each workspace session spawns a separate agent instance (Claude Code, Cursor, Codex, Gemini, Copilot, or other supported executors) working in its own environment and branch.
 
@@ -38,12 +38,12 @@ Extract:
 
 ### 3. Identify the Task Set
 
-`/delegate-batch` supports two invocation modes:
+`/delegate-parallel` supports two invocation modes:
 
 **Explicit mode** -- user provides task IDs:
 
 ```
-/delegate-batch 1.3 2.1 3.2
+/delegate-parallel 1.3 2.1 3.2
 ```
 
 Parse the provided IDs and look them up in the plan and VK. Skip to step 4 (validation).
@@ -51,7 +51,7 @@ Parse the provided IDs and look them up in the plan and VK. Skip to step 4 (vali
 **Recommended mode** -- no task IDs provided:
 
 ```
-/delegate-batch
+/delegate-parallel
 ```
 
 Analyze the backlog to identify tasks that can safely run in parallel:

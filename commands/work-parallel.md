@@ -202,9 +202,9 @@ If Claude Code Agent Teams is enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`), 
 
 ```
 Create an agent team with 3 teammates. Each teammate should work in a separate worktree:
-- Teammate 1: cd to ../myproject-worktrees/task-2.3-add-user-api/ and implement task 2.3 (Add user API). Acceptance criteria: [list AC]. Mark as inreview in VK when done.
-- Teammate 2: cd to ../myproject-worktrees/task-3.1-setup-database/ and implement task 3.1 (Setup database). Acceptance criteria: [list AC]. Mark as inreview in VK when done.
-- Teammate 3: cd to ../myproject-worktrees/task-4.2-add-logging/ and implement task 4.2 (Add logging). Acceptance criteria: [list AC]. Mark as inreview in VK when done.
+- Teammate 1: cd to ../myproject-worktrees/task-2.3-add-user-api/ and implement task 2.3 (Add user API). Acceptance criteria: [list AC]. When done, use get_task to read the current task description, then update_task to append a Completion Log (agent name, branch, files changed, summary, assumptions, AC checklist) to the description. Then mark as inreview in VK.
+- Teammate 2: cd to ../myproject-worktrees/task-3.1-setup-database/ and implement task 3.1 (Setup database). Acceptance criteria: [list AC]. When done, use get_task to read the current task description, then update_task to append a Completion Log to the description. Then mark as inreview in VK.
+- Teammate 3: cd to ../myproject-worktrees/task-4.2-add-logging/ and implement task 4.2 (Add logging). Acceptance criteria: [list AC]. When done, use get_task to read the current task description, then update_task to append a Completion Log to the description. Then mark as inreview in VK.
 ```
 
 Note: The lead's permission mode propagates to all teammates. If the lead uses `--dangerously-skip-permissions`, all teammates do too.
@@ -221,7 +221,40 @@ Include the permission flag the user chose in step 8.
 
 The `claude -p` prompt for each task should include the full task context (description, acceptance criteria, relevant PRD sections) and end with:
 
-> "If you encounter ambiguity, make your best judgment and note assumptions. When done, use update_task to mark the task as inreview in VibeKanban. If you are completely blocked and cannot make progress, mark the task as inreview with a description of what's blocking you."
+> "If you encounter ambiguity, make your best judgment and note assumptions. When you finish implementation, before marking the task as `inreview`:
+>
+> 1. Use `get_task` to read the current task description.
+> 2. Use `update_task` to set the description to the original description plus a completion log section appended at the end. The completion log should include: files changed, a brief summary of what was implemented, any assumptions made, and whether acceptance criteria were met. Use this format:
+>
+> ```
+> ---
+> ## Completion Log
+> **Agent:** Claude Code (headless)
+> **Branch:** task/2.3-add-user-api
+>
+> ### Changes
+> - Created src/routes/users.ts (new file)
+> - Modified src/app.ts (added user routes)
+> - Created tests/users.test.ts (new file)
+>
+> ### Summary
+> Implemented CRUD endpoints for user management...
+>
+> ### Assumptions
+> - Used JWT for authentication (not specified in AC)
+>
+> ### Acceptance Criteria
+> - [x] GET /users/:id returns user profile
+> - [x] PUT /users/:id updates user fields
+> - [x] Endpoints require valid JWT
+> - [x] Input validation rejects malformed data
+> ```
+>
+> 3. Then use `update_task` to set status to `inreview`.
+>
+> If `update_task` fails when appending the completion log, warn but continue — log the error and proceed to mark the task as `inreview`. Logging is best-effort; it should never block the workflow.
+>
+> If you are completely blocked and cannot make progress, mark the task as inreview with a description of what's blocking you."
 
 **Session naming convention:** `claude-task-<plan-id>` (e.g., `claude-task-2.3`). This mirrors the branch/worktree naming for easy cross-reference.
 

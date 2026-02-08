@@ -94,6 +94,7 @@ The markdown-based plan works well for small-to-medium projects but has inherent
 - **No timestamps** -- can't determine when a task started or how long it took
 - **No effort tracking** -- no actual vs. estimated complexity comparison
 - **No velocity metrics** -- can't generate burndown or throughput data
+- **No session history for local work** -- Tier 2 VK workspace sessions preserve full agent history, diffs, and "Attempts," but Tier 1 local execution (worktrees, interactive `/work-task`) has no equivalent in VK. **Stopgap:** The commands now append a structured Completion Log to the task description via `get_task` + `update_task` before updating status. This provides basic visibility (files changed, summary, AC checklist, merge results) but is a workaround for the lack of a proper VK comment/log API. A dedicated VK activity log or comment endpoint would enable separate timestamped entries per attempt, structured metadata, and clean separation between task definition and execution history.
 
 ## Multi-Agent Support: Current State
 
@@ -321,7 +322,7 @@ This separation keeps the commands portable and independent. VK is the shared bo
 | `/work-parallel` | 1 | Analyze backlog, identify independent tasks, set up worktrees, and launch parallel Claude Code sessions |
 | `/merge-parallel` | 1 | Merge worktree branches to main, run tests, update VK status, and clean up worktrees/sessions |
 | `/delegate-task` | 2 | Start a VK workspace session for a specific task with a chosen agent |
-| `/delegate-batch` | 2 | Delegate multiple independent tasks to parallel workspace sessions |
+| `/delegate-parallel` | 2 | Delegate multiple independent tasks to parallel workspace sessions |
 | `/session-status` | 1+2 | Check status of all active workspace sessions |
 
 ### Areas Requiring Further Testing

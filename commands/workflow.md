@@ -45,7 +45,7 @@ Display the following command reference to the user:
 |---------|-------------|
 | `/work-parallel` | Analyze backlog, identify independent tasks, set up git worktrees, and launch parallel Claude Code sessions (Tier 1) |
 | `/delegate-task` | Delegate a task to a separate VK workspace session with a chosen agent (Tier 2) |
-| `/delegate-batch` | Delegate multiple independent tasks to parallel VK workspace sessions (Tier 2) |
+| `/delegate-parallel` | Delegate multiple independent tasks to parallel VK workspace sessions (Tier 2) |
 | `/session-status` | Check status of all active work across local worktrees and VK sessions |
 
 ## Plan Management
