@@ -2,21 +2,6 @@
 
 How claude-vibekanban compares to other AI-assisted development tools.
 
-## TL;DR
-
-Every tool listed here can run AI agents that write code. The difference is what happens *before* and *around* that:
-
-| Gap | Who fills it | claude-vibekanban's approach |
-|---|---|---|
-| "What should I build?" | No one else | PRD generation through guided interview |
-| "How do I break it down?" | No one else | Epic/task decomposition with dependencies and acceptance criteria |
-| "Which tasks can run in parallel?" | Agent Teams (basic), no one else | Dependency graph analysis -- won't parallelize blocked tasks |
-| "What agent should run this?" | No one else | Any MCP agent (Claude, Cursor, Codex, Gemini, Copilot) per task |
-| "What's done across sessions?" | AutoMaker (app-internal), Agent Teams (session-scoped) | Persistent tracking via VK board + git-tracked plan file |
-| "How do I merge parallel work?" | No one else | `/merge-parallel` with test gates, VK updates, worktree cleanup |
-
-In short: other tools are **execution engines**. Claude-vibekanban is the **planning and coordination layer** that sits above them.
-
 ## At a Glance
 
 | | claude-vibekanban | Agent Teams | AutoMaker | Claude Code (bare) | Cursor / Windsurf |
