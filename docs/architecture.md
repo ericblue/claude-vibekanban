@@ -301,7 +301,9 @@ VibeKanban's `start_workspace_session` MCP tool spawns an entirely separate agen
 - Less visibility into progress from the orchestrating session
 - Session lifecycle management (timeouts, failures, retries)
 
-**Current status:** The MCP API supports this, but the slash commands don't yet invoke it. Requires further testing of the workspace session lifecycle.
+**Known issue -- VK worktree creation failures:** VK's server-side worktree manager can fail with `fatal: invalid reference` errors when creating the workspace branch for a new session. This manifests as the task staying in `todo` and the VK UI showing "loading history" indefinitely. The root cause is in VK's `WorktreeManager::create_worktree()` — it fails to create or checkout the generated branch (e.g., `vk/<short-id>-<slug>`). A related issue ([VK #306](https://github.com/BloopAI/vibe-kanban/issues/306)) was fixed in a prior VK release. Running `git worktree prune` on the managed repo and updating VK may resolve it. **Workaround:** Fall back to Tier 1 (`/work-parallel`) which creates worktrees locally and bypasses VK's worktree manager entirely. See the cookbook troubleshooting section for details.
+
+**Current status:** `/delegate-task` and `/delegate-parallel` invoke `start_workspace_session`. Worktree creation reliability remains an open issue that may require VK-side fixes.
 
 ### Separation of Concerns
 
@@ -335,7 +337,7 @@ The following need validation before these commands are production-ready:
 
 3. **Tier 1 -- Environment setup:** Each worktree may need its own dependency install, dev server, etc. How much of this can be automated?
 
-4. **Tier 2 -- Workspace session lifecycle:** How does `start_workspace_session` behave end-to-end? What happens when a session completes, fails, or times out?
+4. **Tier 2 -- Workspace session lifecycle:** How does `start_workspace_session` behave end-to-end? What happens when a session completes, fails, or times out? **Observed:** VK's worktree manager can fail during branch creation (`fatal: invalid reference`), leaving the session stuck in a "loading history" state. The task remains in `todo` and the attempt never runs. `git worktree prune` and VK updates may help. Tier 1 (`/work-parallel`) is a reliable fallback.
 
 5. **Concurrent status updates:** When multiple agents (local or remote) update task status simultaneously, does the MCP API handle this correctly?
 

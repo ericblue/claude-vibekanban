@@ -139,6 +139,27 @@ create_dest_dir() {
     fi
 }
 
+# Remove commands that were renamed or deleted from the project.
+# Add entries here when a command file is renamed or removed.
+STALE_COMMANDS=(
+    "delegate-batch.md"  # renamed to delegate-parallel.md in 0.3.1-preview
+)
+
+cleanup_stale() {
+    local cleaned=0
+    for filename in "${STALE_COMMANDS[@]}"; do
+        local dest="$COMMANDS_DEST/$filename"
+        if [ -e "$dest" ] || [ -L "$dest" ]; then
+            rm "$dest"
+            print_warning "Removed stale command: $filename"
+            ((cleaned++))
+        fi
+    done
+    if [ "$cleaned" -gt 0 ]; then
+        print_info "Cleaned up $cleaned renamed/deleted command(s)"
+    fi
+}
+
 install_copy() {
     print_info "Installing commands (copy mode)..."
 
@@ -304,6 +325,7 @@ case "$ACTION" in
     install)
         check_source
         create_dest_dir
+        cleanup_stale
         if [ "$INSTALL_MODE" = "link" ]; then
             install_link
         else

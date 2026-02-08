@@ -1227,6 +1227,39 @@ git pull
 3. Check that the executor type is supported (CLAUDE_CODE, CURSOR_AGENT, CODEX, GEMINI, COPILOT, DROID)
 4. Verify the base branch exists and is accessible
 
+### VK workspace session stuck on "loading history"
+
+**Problem:** After delegating a task, the VK UI shows "loading history" indefinitely. The task stays in `todo`. Server logs show:
+
+```
+WARN services::services::worktree_manager: git worktree add failed;
+  attempting metadata cleanup and retry: Invalid repository:
+  git command failed: fatal: invalid reference: vk/<branch-name>
+```
+
+**Cause:** VK's server-side worktree manager failed to create the git worktree and workspace branch. This is a known class of issue in VK's worktree management (see [VK #306](https://github.com/BloopAI/vibe-kanban/issues/306)).
+
+**Fix:**
+1. Run `git worktree prune` in the repository that VK is managing to clean up stale worktree metadata
+2. Update VK to the latest version -- worktree bugs have been fixed in past releases
+3. Retry the delegation
+
+**Workaround -- fall back to Tier 1:** If the issue persists, bypass VK's worktree manager entirely by using local execution instead:
+
+```
+/work-parallel 2.3          # single task, creates local worktree + headless session
+```
+
+Or manually:
+
+```bash
+git worktree add ../myproject-worktrees/task-2.3-add-user-api -b task/2.3-add-user-api
+cd ../myproject-worktrees/task-2.3-add-user-api
+claude                       # then use /work-task inside the session
+```
+
+Tier 1 creates worktrees locally with plain `git worktree add` and doesn't depend on VK's worktree manager at all. The agent still updates VK task status via MCP, and completion logs are appended to the task description. You lose VK's session history and diff view, but the task gets done. See the [Architecture doc](architecture.md#two-tier-parallel-execution-model) for the full Tier 1 vs Tier 2 comparison.
+
 ### `/merge-parallel` stops at conflicts
 
 **Problem:** `/merge-parallel` stops mid-way through merging branches due to a conflict.

@@ -159,5 +159,8 @@ Use `/session-status` to check on active workspace sessions.
 - **Task already in progress**: Warn the user. Ask if they want to delegate anyway (may create a conflicting session).
 - **Task already done**: Inform the user. Ask if they want to re-delegate for rework.
 - **No repos found**: Use `list_repos` to check. If no repos are configured for the project, inform the user that the VK project needs a repository linked.
-- **Workspace session fails to start**: Report the error. Suggest checking VK project configuration and repo settings.
 - **Multiple repos**: If the project has multiple repos, ask the user which one(s) the task should work in.
+- **Workspace session fails to start**: Report the error. Suggest checking VK project configuration and repo settings. **Known issue:** VK's server-side worktree manager can fail with `fatal: invalid reference` errors when creating the workspace branch (see [VK #306](https://github.com/BloopAI/vibe-kanban/issues/306) for a related issue). If this happens:
+  1. Try `git worktree prune` on the repo VK is managing, then retry
+  2. Check that VK is updated to the latest version
+  3. **Fallback to Tier 1**: Use `/work-parallel` with the same task ID instead. This creates a local worktree and launches a Claude Code session directly, bypassing VK's worktree manager entirely. The agent still updates VK task status via MCP, and completion logs are appended to the task description. You lose VK's session history and diff view, but the task gets done.

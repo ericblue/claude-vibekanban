@@ -187,3 +187,7 @@ If any session fails to start, report the error and continue with the remaining 
 - **Partial batch failure**: If some sessions start and others fail, report which succeeded and which failed. Don't roll back successful sessions.
 - **User wants more than 3**: Allow it, but warn about resource consumption and token costs.
 - **User wants different executors per task**: Suggest using `/delegate-task` individually for each.
+- **Workspace session fails with git worktree error**: VK's server-side worktree manager can fail with `fatal: invalid reference` errors when creating workspace branches (see [VK #306](https://github.com/BloopAI/vibe-kanban/issues/306)). If this happens:
+  1. Try `git worktree prune` on the repo VK is managing, then retry
+  2. Check that VK is updated to the latest version
+  3. **Fallback to Tier 1**: Use `/work-parallel` with the same task IDs instead. This creates local worktrees and launches Claude Code sessions directly, bypassing VK's worktree manager. The agents still update VK task status via MCP.
