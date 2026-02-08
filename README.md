@@ -20,6 +20,10 @@ Most AI coding tools help you **write code faster**. This helps you **decide wha
 
 See [docs/comparisons.md](docs/comparisons.md) for detailed comparisons with AutoMaker, Claude Code Agent Teams, Cursor, Aider, and other tools.
 
+## Design Philosophy
+
+Automate the boring coordination and bookkeeping, keep humans in the loop for judgment calls. The planning pipeline needs your domain knowledge, drift detection flags problems but lets you decide what to do about them, and conflict resolution stops for human review rather than guessing. Fully autonomous merging and sync felt like a trap -- the 80% case is trivial, but for the 20% you really want a person paying attention.
+
 ## What is VibeKanban?
 
 [VibeKanban](https://www.vibekanban.com/) is a Kanban-style project board designed for AI-assisted development. It provides an MCP (Model Context Protocol) server that lets AI agents create, update, and track tasks programmatically. Agents like Claude Code, Cursor, Codex, Gemini, and others can connect through the MCP API to:

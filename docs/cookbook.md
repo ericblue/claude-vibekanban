@@ -1043,6 +1043,10 @@ As a workaround, the commands append a structured **Completion Log** to the task
 
 This is a stopgap — a proper VK comment/log API would be the ideal solution. If you need full session visibility, consider using Tier 2 delegation (`/delegate-task`) instead.
 
+**Q: Why doesn't `/merge-parallel` auto-resolve conflicts?**
+
+A: By design. The 80% case is trivial merges that go through cleanly. For the 20% that conflict -- shared registries, config files, barrel exports -- you really want a person looking at it. Auto-resolution risks silently producing broken code that passes syntax checks but has wrong semantics (duplicate entries, wrong import order, dropped config). When `/merge-parallel` hits a conflict, it stops, reports the conflicting files, and waits. You fix it, re-run, and already-merged branches are skipped automatically.
+
 **Q: Can parallel tasks cause merge conflicts?**
 
 A: Yes. Each parallel session works on its own branch. When merging back to main, conflicts are possible if tasks touch related files -- especially shared registries, route tables, index/barrel files, and config files. Independent tasks that modify different files merge cleanly. Use the rebase-then-merge pattern: merge one branch, rebase the next onto the updated main, resolve conflicts, repeat.
