@@ -1,7 +1,7 @@
 ---
 description: Sync development plan with VibeKanban task status (VK is source of truth)
 allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks, mcp__vibe_kanban__get_task, mcp__vibe_kanban__update_task
-version: 0.3-preview
+version: 0.3.1-preview
 date: 2026-02-07
 author: Eric Blue (https://github.com/ericblue)
 repository: https://github.com/ericblue/claude-vibekanban

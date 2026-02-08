@@ -1,6 +1,6 @@
 ---
 description: Show available commands and recommended workflow order
-version: 0.3-preview
+version: 0.3.1-preview
 date: 2026-02-07
 author: Eric Blue (https://github.com/ericblue)
 repository: https://github.com/ericblue/claude-vibekanban
