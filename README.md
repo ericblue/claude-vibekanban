@@ -81,7 +81,7 @@ flowchart LR
 
 | Command | Description |
 |---------|-------------|
-| `/work-parallel` | Analyze backlog, identify independent tasks, set up worktrees, and launch parallel sessions |
+| `/work-parallel` | Analyze backlog, identify independent tasks, set up worktrees, mark tasks in progress, and auto-launch parallel sessions (screen/tmux/background) |
 | `/delegate-task` | Delegate a task to a separate VibeKanban workspace session (any supported agent) |
 | `/delegate-batch` | Delegate multiple independent tasks to parallel workspace sessions |
 | `/session-status` | Check status of all active workspace sessions |
@@ -479,6 +479,7 @@ The slash commands in this repo are markdown prompt files -- they can be adapted
 | 0.2 | 2026-02-06 | Added `/generate-prd` (interview-style PRD creation) and `/next-task` (priority-based task recommendation). Enhanced `/create-plan` with Complexity and Depends On columns, per-task acceptance criteria in Task Details sections. Enhanced `/sync-plan` with drift detection (stale tasks, dependency violations, blocked tasks ready to start, scope drift). Fixed MCP tool name prefix (`mcp__vibe_kanban__`) across all commands. Replaced inline bash execution with tool instructions to fix permission errors. |
 | 0.21 | 2026-02-06 | Added `/work-task` and `/work-next` execution commands for autonomous task implementation with full context assembly and AC verification. Expanded README with VibeKanban overview, multi-agent support table, and board screenshot. |
 | 0.3-preview | 2026-02-07 | Experimental parallel execution commands: `/work-parallel` (local worktrees + full CC sessions), `/delegate-task`, `/delegate-batch`, `/session-status` (VK workspace sessions). Two-tier execution model. Added [architecture doc](docs/architecture.md) and [cookbook](docs/cookbook.md). These commands are early preview and actively evolving. |
+| 0.4-preview | 2026-02-07 | `/work-parallel`: Auto-launch sessions via screen/tmux with failure detection and interactive recovery. Tasks marked `inprogress` in VK before session launch. Runtime detection of screen -> tmux -> background fallback. `/session-status`: Detects active screen/tmux sessions, shows attach commands, flags sessions without activity. Updated architecture docs and cookbook with screen/tmux observability model. |
 
 ## Documentation
 

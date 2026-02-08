@@ -190,10 +190,11 @@ The worktree directory name mirrors the branch name. `/work-parallel` reports al
 
 1. Create the worktrees directory if it doesn't exist (`mkdir -p ../<project>-worktrees`)
 2. Create a git worktree and branch for each approved task (`git worktree add ../<project>-worktrees/task-2.3-add-user-api -b task/2.3-add-user-api`)
-3. Launch a full Claude Code session in each worktree (via Agent Teams, headless `claude -p`, or manual terminals)
-4. Each session has MCP access and implements its task with full context (PRD, plan, acceptance criteria)
-5. Sessions update VibeKanban status directly via `update_task`
-6. After review and merge, clean up worktrees (`git worktree remove ../<project>-worktrees/task-2.3-add-user-api`)
+3. Mark tasks `inprogress` in VibeKanban via `update_task` (non-blocking on failure)
+4. Launch a full Claude Code session in each worktree (via Agent Teams, screen/tmux sessions, background processes, or manual terminals)
+5. Each session has MCP access and implements its task with full context (PRD, plan, acceptance criteria)
+6. Sessions update VibeKanban status directly via `update_task` (mark `inreview` when done)
+7. After review and merge, clean up worktrees (`git worktree remove ../<project>-worktrees/task-2.3-add-user-api`)
 
 **Strengths:**
 
@@ -236,18 +237,17 @@ A key practical concern with parallel sessions is visibility: how do you know wh
 | Launch mechanism | Real-time visibility | Attach mid-session | Post-session output |
 |--|--|--|--|
 | **Agent Teams** | Teammate messages appear in the lead's session | No direct attach; lead sees messages but not full session activity | No persistent log (team state is lost on cleanup) |
-| **Headless `claude -p`** | Redirect stdout to a log file and `tail -f` | No interactive attach; read-only log tailing only | Output file if redirected; `--output-format stream-json` for structured output |
+| **Screen/tmux sessions** | `screen -r` / `tmux attach` to observe live output | Read-only observation during `claude -p` execution; full interactive input during failure recovery mode | Log file via `tee`; `screen -ls` / `tmux list-sessions` for health checks |
+| **Background processes** | `tail -f` on log file | No interactive attach; read-only log tailing only | Output file via redirect; `--output-format stream-json` for structured output |
 | **Manual terminals** | Full visibility (you're watching each terminal) | Already attached | Terminal scrollback |
 
-There is no `tmux attach`-style mechanism to jump into a running Claude Code session. This is a known gap.
+Screen and tmux provide the recommended balance of observability and recovery. During normal `claude -p` execution, attaching to a screen/tmux session provides read-only observation of the agent's work. If the agent fails (non-zero exit), a wrapper script automatically launches interactive `claude` in the same session and worktree. The user simply attaches to continue where the agent left off. `screen -ls` serves as a natural health check: session gone = completed successfully; session still alive after expected time = either still running or in interactive recovery mode.
 
 **Practical mitigations:**
 
-- **For headless sessions**, always redirect output to a log file:
-  ```bash
-  claude -p "..." --permission-mode auto-accept > ../myproject-worktrees/task-2.3.log 2>&1
-  ```
-  Then monitor with `tail -f ../myproject-worktrees/task-2.3.log`. Use `--output-format stream-json` for structured JSON output that's easier to parse programmatically.
+- **Screen/tmux is the primary mechanism** for headless session observability. `/work-parallel` auto-detects screen or tmux at runtime and launches sessions inside managed screen/tmux sessions with failure recovery. Attach to observe progress (`screen -r claude-task-2.3`), check health (`screen -ls`), and detach without stopping (`Ctrl-A D`).
+
+- **Log files are always created** regardless of launch mechanism. Screen/tmux sessions use `tee` to write to both the terminal and a log file. Background processes redirect directly. Logs are stored at `../<project>-worktrees/task-<id>.log`.
 
 - **For Agent Teams**, the lead acts as a natural aggregation point. Teammates message the lead with progress updates. The lead can relay status to the user.
 

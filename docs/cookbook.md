@@ -283,13 +283,36 @@ After confirmation, Claude creates git worktrees:
     task-4.2-add-logging/
 ```
 
-**Step 5: Sessions launch**
+**Step 5: Tasks marked in progress and sessions auto-launch**
 
-Claude provides instructions to launch sessions using your preferred mechanism (Agent Teams, headless `claude -p`, or manual terminals).
+Claude marks all approved tasks as `inprogress` in VibeKanban, then auto-launches sessions. It detects whether `screen` or `tmux` is available at runtime:
+
+- **Screen/tmux found**: Sessions launch inside managed screen/tmux sessions with failure recovery. You'll see a summary table with session names, log paths, and attach commands.
+- **Neither found**: Sessions run as background processes with log file output.
+- **Agent Teams**: If enabled, teammates are spawned instead.
+- **Manual terminals**: You launch `claude` in each worktree yourself.
+
+```
+## Sessions Launched
+
+| Task | Session | Log File | Attach Command |
+|------|---------|----------|----------------|
+| 2.3 - Add user API | claude-task-2.3 | ../myproject-worktrees/task-2.3.log | screen -r claude-task-2.3 |
+| 3.1 - Setup database | claude-task-3.1 | ../myproject-worktrees/task-3.1.log | screen -r claude-task-3.1 |
+| 4.2 - Add logging | claude-task-4.2 | ../myproject-worktrees/task-4.2.log | screen -r claude-task-4.2 |
+```
 
 **Step 6: Monitor and review**
 
-Check progress with `/session-status`. When tasks move to `inreview`, `cd` into each worktree to review, test, and merge branches back to main sequentially.
+Check progress with `/session-status` or use screen/tmux commands directly:
+
+```bash
+screen -ls                           # list all sessions (health check)
+screen -r claude-task-2.3            # attach to observe (Ctrl-A D to detach)
+tail -f ../myproject-worktrees/task-2.3.log   # watch log file
+```
+
+When tasks move to `inreview`, `cd` into each worktree to review, test, and merge branches back to main sequentially.
 
 **Step 7: Clean up**
 
@@ -506,22 +529,79 @@ If a task is better suited to a different editor or agent:
 
 VK launches a Cursor workspace session for task 2.3. The task status updates flow back to VK automatically. You can review in the VK UI when done.
 
-### Recipe: Monitoring headless sessions
+### Recipe: Monitoring parallel sessions (screen/tmux)
 
-If you launched parallel sessions with `claude -p`, capture logs for monitoring:
+When `/work-parallel` auto-launches sessions via screen or tmux, use these commands to monitor:
+
+**List all sessions (health check):**
 
 ```bash
-cd ../myproject-worktrees/task-2.3-add-user-api && claude -p "..." --permission-mode auto-accept > task-2.3.log 2>&1 &
+screen -ls                           # screen
+tmux list-sessions                   # tmux
 ```
 
-Then monitor:
+Sessions named `claude-task-*` are from `/work-parallel`. Session gone = completed. Session alive = still running or in interactive recovery.
+
+**Attach to observe a running session:**
+
+```bash
+screen -r claude-task-2.3            # screen (Ctrl-A D to detach)
+tmux attach -t claude-task-2.3       # tmux (Ctrl-B D to detach)
+```
+
+During normal `claude -p` execution, the session is observe-only. If the agent has failed and entered interactive recovery, you can type commands directly.
+
+**Watch log files:**
 
 ```bash
 tail -f ../myproject-worktrees/task-2.3.log          # watch live output
 git -C ../myproject-worktrees/task-2.3-add-user-api log --oneline -5   # check commits
 ```
 
+**Kill a session:**
+
+```bash
+screen -X -S claude-task-2.3 quit    # screen
+tmux kill-session -t claude-task-2.3 # tmux
+```
+
 Or check all sessions at once with `/session-status`.
+
+### Recipe: Debugging a stuck parallel session
+
+If a session seems stuck or has failed:
+
+**1. Check if the session is still alive:**
+
+```bash
+screen -ls | grep claude-task-2.3
+```
+
+- **Session listed (Detached)**: Still running normally, or in interactive recovery mode. Attach to check: `screen -r claude-task-2.3`
+- **Session listed (Attached)**: Someone else is already connected to it.
+- **No matching session**: Session exited (either completed successfully or crashed).
+
+**2. If the session is alive, attach to investigate:**
+
+```bash
+screen -r claude-task-2.3
+```
+
+If you see the interactive recovery message ("Session exited with error...Launching interactive mode"), you're in interactive `claude` already positioned in the correct worktree. Continue the work from there.
+
+If the session is still running `claude -p`, you can only observe -- wait for it to finish or kill the session to restart.
+
+**3. If the session is gone but the task is still `inprogress` in VK:**
+
+The session completed or crashed without updating VK. Check the log file:
+
+```bash
+tail -50 ../myproject-worktrees/task-2.3.log
+```
+
+Then either:
+- Relaunch manually: `cd ../myproject-worktrees/task-2.3-add-user-api && claude` (interactive session to finish the work)
+- Update VK status if the work was actually completed: use `update_task` to mark `inreview`
 
 ### Recipe: Using Agent Teams with this workflow
 
@@ -779,15 +859,24 @@ Key notes:
 
 **Q: How can I see what a parallel session is doing?**
 
-A: It depends on how you launched the session:
+A: The primary mechanism is **screen/tmux sessions**. When `/work-parallel` auto-launches sessions, it wraps each `claude -p` call inside a screen or tmux session. You can attach to observe in real time:
 
-- **Manual terminals**: You're already watching. Use `tmux` or split panes to monitor all terminals simultaneously.
-- **Headless `claude -p`**: Redirect output to a log file (`> ../myproject-worktrees/task-2.3.log 2>&1`) and `tail -f` to watch. Use `--output-format stream-json` for structured output.
-- **Agent Teams**: Teammates message the lead with updates, but you can't "attach" to see their full session output.
+```bash
+screen -r claude-task-2.3            # attach to observe (Ctrl-A D to detach)
+screen -ls                           # list all sessions (health check)
+```
+
+During normal `claude -p` execution, the attached session is observe-only. If the agent fails, the wrapper automatically launches interactive `claude` in the same session -- you can then attach and interact directly.
+
+Other monitoring options:
+
+- **Log files**: Always created at `../<project>-worktrees/task-<id>.log`. Use `tail -f` to watch live output.
+- **Manual terminals**: You're already watching. Use split panes to monitor all terminals simultaneously.
+- **Agent Teams**: Teammates message the lead with updates, but you can't attach to see their full session output.
 - **VK task status**: Always available regardless of mechanism. Run `/session-status` to check which tasks have moved to `inreview` or `done`.
 - **Git activity**: Check recent commits in a worktree (`git -C ../myproject-worktrees/task-2.3-add-user-api log --oneline -5`) as a proxy for progress.
 
-There is currently no `tmux attach`-style mechanism to jump into a running Claude Code session mid-execution. See the [Architecture doc](architecture.md#observability-and-session-monitoring) for details.
+See the [Architecture doc](architecture.md#observability-and-session-monitoring) for the full observability model.
 
 **Q: Can parallel tasks cause merge conflicts?**
 

@@ -1,7 +1,7 @@
 ---
 description: Check status of all active work across local worktrees and VK sessions
 allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks, mcp__vibe_kanban__get_task
-version: 0.3-preview
+version: 0.4-preview
 date: 2026-02-07
 author: Eric Blue (https://github.com/ericblue)
 repository: https://github.com/ericblue/claude-vibekanban
@@ -46,6 +46,18 @@ Run `git worktree list` to detect any active worktrees. Match worktree branch na
 
 Report which tasks have active worktrees and their paths.
 
+### 3.5 Check for Screen/Tmux Sessions
+
+Check for active screen or tmux sessions that match the `claude-task-*` naming convention used by `/work-parallel`:
+
+1. Run `screen -ls` and parse output for sessions matching `claude-task-*`. Extract session names and state (Attached/Detached).
+2. If no screen sessions found, fall back to `tmux list-sessions` and parse for `claude-task-*` sessions.
+3. Match session names to tasks: session `claude-task-2.3` maps to plan task 2.3.
+4. Record session state for each matched task:
+   - **Attached** -- someone is currently watching/interacting with the session
+   - **Detached** -- session is running unattended (normal for `claude -p`)
+   - **No session found** -- session completed (exited cleanly) or was never launched via screen/tmux
+
 ### 4. Present the Status Report
 
 ```
@@ -53,11 +65,11 @@ Report which tasks have active worktrees and their paths.
 
 ### In Progress (3 tasks)
 
-| Task | Status | Type | Location |
-|------|--------|------|----------|
-| 2.3 - Add user API | inprogress | Worktree | ../myproject-worktrees/task-2.3-add-user-api/ |
-| 3.1 - Setup database | inprogress | VK Workspace | Remote (CLAUDE_CODE) |
-| 4.2 - Add logging | inprogress | Worktree | ../myproject-worktrees/task-4.2-add-logging/ |
+| Task | Status | Type | Location | Session |
+|------|--------|------|----------|---------|
+| 2.3 - Add user API | inprogress | Worktree | ../myproject-worktrees/task-2.3-add-user-api/ | `screen -r claude-task-2.3` (Detached) |
+| 3.1 - Setup database | inprogress | VK Workspace | Remote (CLAUDE_CODE) | (no session found) |
+| 4.2 - Add logging | inprogress | Worktree | ../myproject-worktrees/task-4.2-add-logging/ | `screen -r claude-task-4.2` (Detached) |
 
 ### In Review (1 task)
 
@@ -110,18 +122,19 @@ Report this as a "Session Activity" section:
 ```
 ### Session Activity
 
-| Task | Branch | Last Commit | Log File |
-|------|--------|------------|----------|
-| 2.3 - Add user API | task/2.3-add-user-api | 3 min ago: "Add user endpoint" | task-2.3.log (active) |
-| 3.1 - Setup database | task/3.1-setup-database | 8 min ago: "Add schema migration" | task-3.1.log (active) |
-| 4.2 - Add logging | task/4.2-add-logging | (no commits yet) | No log file |
+| Task | Branch | Last Commit | Log File | Session Status |
+|------|--------|------------|----------|----------------|
+| 2.3 - Add user API | task/2.3-add-user-api | 3 min ago: "Add user endpoint" | task-2.3.log (active) | screen: Detached |
+| 3.1 - Setup database | task/3.1-setup-database | 8 min ago: "Add schema migration" | task-3.1.log (active) | screen: Detached |
+| 4.2 - Add logging | task/4.2-add-logging | (no commits yet) | No log file | (no session) |
 ```
 
-If a task has no commits and no log activity, suggest the user check on it:
+If a task has no commits, no log activity, and no active screen/tmux session, flag it as potentially failed:
 
 ```
-⚠ Task 4.2 has no commits and no log activity. The session may still be starting, or it may be stuck.
-  - If using headless mode: check if the process is still running
+⚠ Task 4.2 has no commits, no log activity, and no active session. The session may have failed to launch or crashed.
+  - Check the log file for errors: tail -20 ../<project>-worktrees/task-4.2.log
+  - If using screen/tmux: session gone = completed or crashed. Check VK status.
   - If using Agent Teams: ask the lead about teammate status
   - If using manual terminals: switch to that terminal to check
 ```
@@ -135,6 +148,9 @@ Based on the status, suggest relevant next steps:
 - **No active work**: "No tasks are in progress. Run `/work-next` to start the next task, or `/work-parallel` for parallel execution."
 - **Many tasks in review**: "You have [N] tasks waiting for review. Consider reviewing and merging them before starting more work."
 - **Stale in-progress tasks**: If tasks have been `inprogress` without a corresponding worktree or active session, flag them: "Task [X] is marked in progress but has no active worktree or session. It may be stale."
+- **Active screen/tmux session, observe progress**: "Task 2.3 has an active screen session. Attach to observe: `screen -r claude-task-2.3` (Ctrl-A D to detach)."
+- **Session ended but task still inprogress**: "Task 4.2 has no active screen session but is still `inprogress` in VK. The session may have completed without updating VK, or it may have crashed. Check the log file (`tail -20 ../<project>-worktrees/task-4.2.log`) and either relaunch or update the task status manually."
+- **Session in interactive recovery**: "Task 3.1 has a screen session still alive well after expected completion. It may be in interactive recovery mode (agent failed and relaunched interactively). Attach to continue: `screen -r claude-task-3.1`."
 
 ### 7. Provide Cleanup Guidance
 

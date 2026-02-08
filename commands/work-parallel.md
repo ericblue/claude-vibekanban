@@ -1,7 +1,7 @@
 ---
 description: Analyze backlog, identify independent tasks, set up worktrees, and launch parallel sessions
 allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks, mcp__vibe_kanban__get_task, mcp__vibe_kanban__update_task, mcp__vibe_kanban__list_repos
-version: 0.3-preview
+version: 0.4-preview
 date: 2026-02-07
 author: Eric Blue (https://github.com/ericblue)
 repository: https://github.com/ericblue/claude-vibekanban
@@ -140,7 +140,25 @@ Slugify titles by: lowercasing, replacing spaces with hyphens, removing special 
 | 4.2 - Add logging | task/4.2-add-logging | ../myproject-worktrees/task-4.2-add-logging/ |
 ```
 
-### 7. Address Permissions
+### 7. Mark Tasks In Progress
+
+Before launching sessions, mark each approved task as `inprogress` in VibeKanban using `update_task`. This matches the `/work-task` pattern where tasks are marked before execution begins.
+
+For each approved task, call `update_task` with status `inprogress`. Report results in a table:
+
+```
+## Task Status Updates
+
+| Task | VK Status | Result |
+|------|-----------|--------|
+| 2.3 - Add user API | inprogress | Updated |
+| 3.1 - Setup database | inprogress | Updated |
+| 4.2 - Add logging | inprogress | Updated |
+```
+
+**Non-blocking on failure:** If a status update fails for a task, warn the user but continue with the remaining tasks and session launch. Example: "Warning: Failed to mark task 4.2 as inprogress in VK (API error). The session will still launch -- the agent can update the status itself."
+
+### 8. Address Permissions
 
 Before launching sessions, discuss permissions with the user. Parallel sessions need to run with minimal interruption -- permission prompts that block on user input will stall sessions.
 
@@ -170,9 +188,9 @@ Notes:
 - **Headless `claude -p`**: Non-interactive -- **cannot respond to prompts**. Must use option 1, 2, or 4.
 - **Manual terminals**: Any option works, but option 3 requires active monitoring of all terminals.
 
-### 8. Launch Sessions
+### 9. Launch Sessions
 
-Explain to the user how to launch Claude Code sessions in each worktree. The launch mechanism depends on what's available:
+Launch Claude Code sessions in each worktree. The launch mechanism depends on what's available:
 
 **Option A: Agent Teams (preferred if available)**
 
@@ -187,17 +205,97 @@ Create an agent team with 3 teammates. Each teammate should work in a separate w
 
 Note: The lead's permission mode propagates to all teammates. If the lead uses `--dangerously-skip-permissions`, all teammates do too.
 
-**Option B: Headless mode**
+**Option B: Auto-launched sessions (screen/tmux/background)**
 
-Provide commands the user can run in separate terminals. Include the permission flag the user chose in step 7:
+Detect and use the best available session manager at runtime. Check in order: `which screen` -> `which tmux` -> fallback to background processes with log files.
+
+Include the permission flag the user chose in step 8.
+
+**Prompt template for all headless sessions:**
+
+The `claude -p` prompt for each task should include the full task context (description, acceptance criteria, relevant PRD sections) and end with:
+
+> "If you encounter ambiguity, make your best judgment and note assumptions. When done, use update_task to mark the task as inreview in VibeKanban. If you are completely blocked and cannot make progress, mark the task as inreview with a description of what's blocking you."
+
+**Session naming convention:** `claude-task-<plan-id>` (e.g., `claude-task-2.3`). This mirrors the branch/worktree naming for easy cross-reference.
+
+**Log files:** Always create log files at `../<project>-worktrees/task-<id>.log` regardless of launch mechanism. Screen/tmux use `tee` to write to both the terminal and log file. Background mode redirects directly.
+
+**If `screen` is available:**
+
+Launch each session inside a detached screen session with a wrapper script that detects failures and provides interactive recovery:
 
 ```bash
-cd ../myproject-worktrees/task-2.3-add-user-api && claude -p "Implement task 2.3: Add user API. [Include full context: description, AC, relevant PRD sections]. When done, use update_task to mark as inreview in VibeKanban." --permission-mode auto-accept
-
-cd ../myproject-worktrees/task-3.1-setup-database && claude -p "Implement task 3.1: Setup database. [Include full context]. When done, use update_task to mark as inreview in VibeKanban." --permission-mode auto-accept
-
-cd ../myproject-worktrees/task-4.2-add-logging && claude -p "Implement task 4.2: Add logging. [Include full context]. When done, use update_task to mark as inreview in VibeKanban." --permission-mode auto-accept
+screen -dmS claude-task-2.3 bash -c '
+  cd ../<project>-worktrees/task-2.3-add-user-api
+  claude -p "<prompt>" --permission-mode auto-accept 2>&1 | tee ../<project>-worktrees/task-2.3.log
+  EXIT_CODE=$?
+  if [ $EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "================================================"
+    echo "Session exited with error (code $EXIT_CODE)."
+    echo "Launching interactive Claude for recovery."
+    echo "Attach with: screen -r claude-task-2.3"
+    echo "================================================"
+    claude
+  fi
+'
 ```
+
+The wrapper pattern:
+1. Runs `claude -p "<prompt>"` with output piped through `tee` to the log file
+2. Checks the exit code after `claude -p` finishes
+3. On failure (non-zero exit): automatically launches interactive `claude` in the same screen session and worktree -- the user just needs to attach to continue
+4. On success (exit 0): the screen session ends cleanly
+
+**Health check via `screen -ls`:** Session gone = completed successfully. Session still alive after expected completion time = either still running or waiting in interactive recovery mode for the user.
+
+Note: During normal `claude -p` execution, the screen session is observe-only when attached (you can watch but not interact). On failure, the interactive fallback accepts full input.
+
+**If `tmux` is available (and screen is not):**
+
+Same wrapper pattern using tmux:
+
+```bash
+tmux new-session -d -s claude-task-2.3 bash -c '
+  cd ../<project>-worktrees/task-2.3-add-user-api
+  claude -p "<prompt>" --permission-mode auto-accept 2>&1 | tee ../<project>-worktrees/task-2.3.log
+  EXIT_CODE=$?
+  if [ $EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "================================================"
+    echo "Session exited with error (code $EXIT_CODE)."
+    echo "Launching interactive Claude for recovery."
+    echo "Attach with: tmux attach -t claude-task-2.3"
+    echo "================================================"
+    claude
+  fi
+'
+```
+
+**Fallback (no screen or tmux):**
+
+Run sessions as background processes with log file redirection. No interactive recovery is available in this mode:
+
+```bash
+cd ../<project>-worktrees/task-2.3-add-user-api && claude -p "<prompt>" --permission-mode auto-accept > ../<project>-worktrees/task-2.3.log 2>&1 &
+```
+
+Warn the user: "Neither screen nor tmux was found. Sessions will run as background processes. You can monitor progress via log files (`tail -f ../<project>-worktrees/task-2.3.log`) but cannot attach to sessions interactively. Consider installing screen or tmux for a better experience."
+
+**After launching all sessions, print a summary table:**
+
+```
+## Sessions Launched
+
+| Task | Session | Log File | Attach Command |
+|------|---------|----------|----------------|
+| 2.3 - Add user API | claude-task-2.3 | ../<project>-worktrees/task-2.3.log | screen -r claude-task-2.3 |
+| 3.1 - Setup database | claude-task-3.1 | ../<project>-worktrees/task-3.1.log | screen -r claude-task-3.1 |
+| 4.2 - Add logging | claude-task-4.2 | ../<project>-worktrees/task-4.2.log | screen -r claude-task-4.2 |
+```
+
+(Adjust the "Attach Command" column for tmux or "(background -- use tail -f on log)" for the fallback.)
 
 **Option C: Manual terminals**
 
@@ -215,29 +313,36 @@ In each session, use /work-task [task-id] to start the task.
 
 Note: With manual terminals, you can respond to permission prompts interactively, but you'll need to monitor all terminal windows.
 
-### 8. Provide Post-Execution Guidance
+### 10. Provide Post-Execution Guidance
 
-After launching sessions, remind the user about the review-before-merge workflow:
+After launching sessions, remind the user about monitoring and the review-before-merge workflow:
 
 ```
 ## Next Steps
 
-1. **Monitor**: Check progress in the VibeKanban board or with `/plan-status`
-2. **Review**: When tasks move to `inreview`, test each branch:
+1. **Health check**: Run `screen -ls` (or `tmux list-sessions`) to see active sessions.
+   - Session listed = still running (or in interactive recovery mode)
+   - Session gone = completed successfully
+2. **Observe**: Attach to a running session to watch progress:
+   - `screen -r claude-task-2.3` (Ctrl-A D to detach without stopping)
+   - `tmux attach -t claude-task-2.3` (Ctrl-B D to detach)
+3. **Monitor status**: Check `/session-status` or `/plan-status` for a unified view
+4. **Review**: When tasks move to `inreview`, test each branch:
    - cd into the worktree, run tests, verify behavior
    - Use VK's diff view and inline commenting for code review
-3. **Merge sequentially**:
+5. **Merge sequentially**:
    - Merge the first branch to main
    - Rebase the next branch onto main: `git rebase main`
    - Resolve any conflicts (watch for shared files: registries, configs, index files)
    - Repeat for remaining branches
-4. **Sync**: Run `/sync-plan` after all branches are merged
-5. **Clean up**: Remove worktrees when done:
+6. **Sync**: Run `/sync-plan` after all branches are merged
+7. **Clean up**: Remove worktrees and sessions when done:
    - `git worktree remove ../myproject-worktrees/task-2.3-add-user-api`
    - Or remove all: `rm -rf ../myproject-worktrees/ && git worktree prune`
+   - Kill leftover screen sessions: `screen -X -S claude-task-2.3 quit`
 ```
 
-### 9. Handle Edge Cases
+### 11. Handle Edge Cases
 
 - **No available tasks**: All tasks are done, in progress, or blocked. Report what's blocking progress.
 - **Only 1 available task**: Suggest using `/work-next` instead -- parallelism adds overhead with no benefit for a single task.
