@@ -847,14 +847,14 @@ A: Parallel sessions (especially headless ones) can't prompt for interactive per
 
 | Mode | Flag | Best for |
 |------|------|----------|
-| **Auto-accept** (recommended) | `--permission-mode auto-accept` | Most parallel workflows |
+| **Bypass permissions** (recommended) | `--permission-mode bypassPermissions` | Most parallel workflows |
 | **Skip permissions** | `--dangerously-skip-permissions` | Fast but least safe |
 | **Interactive** | (default) | Manual terminals only -- you must monitor each window |
 | **Pre-configured** | Uses `~/.claude/settings.json` allowedTools | If you've already configured tool allowlists |
 
 Key notes:
 - **Agent Teams** inherit the lead's permission mode. Set it on the lead before spawning teammates.
-- **Headless `claude -p`** is non-interactive and **cannot respond to prompts**. You must use auto-accept, skip permissions, or pre-configured settings.
+- **Headless `claude -p`** is non-interactive and **cannot respond to prompts**. You must use bypass permissions, skip permissions, or pre-configured settings.
 - **Manual terminals** support any mode, but interactive requires actively monitoring all terminal windows for prompts.
 
 **Q: How can I see what a parallel session is doing?**
@@ -903,7 +903,7 @@ See the [Architecture doc](architecture.md#human-in-the-loop-philosophy) for a d
 
 **Q: Can I make this workflow more autonomous?**
 
-A: Partially. For parallel sessions, you can choose `--dangerously-skip-permissions` or `--permission-mode auto-accept` to let agents run without permission prompts. Headless `claude -p` sessions run without interactive input. But the planning pipeline (`/generate-prd`, `/prd-review`, `/create-plan`) is inherently interactive -- it needs your domain knowledge and judgment. The execution commands (`/work-next`, `/work-task`) always confirm before starting work. This is by design: the human-in-the-loop steps are where quality happens.
+A: Partially. For parallel sessions, you can choose `--dangerously-skip-permissions` or `--permission-mode bypassPermissions` to let agents run without permission prompts. Headless `claude -p` sessions run without interactive input. But the planning pipeline (`/generate-prd`, `/prd-review`, `/create-plan`) is inherently interactive -- it needs your domain knowledge and judgment. The execution commands (`/work-next`, `/work-task`) always confirm before starting work. This is by design: the human-in-the-loop steps are where quality happens.
 
 ### Agent Teams and multi-agent
 
@@ -1028,7 +1028,7 @@ git pull
 
 **Fix:**
 1. Check if the process is running: `ps aux | grep claude`
-2. Ensure you used a permission flag -- headless mode **cannot respond to prompts**: `--permission-mode auto-accept` or `--dangerously-skip-permissions`
+2. Ensure you used a permission flag -- headless mode **cannot respond to prompts**. Use `--permission-mode bypassPermissions` or `--dangerously-skip-permissions`
 3. Verify MCP server is accessible from the worktree directory
 4. Check the log file if you redirected output: `tail -20 ../myproject-worktrees/task-2.3.log`
 

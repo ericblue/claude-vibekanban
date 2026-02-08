@@ -170,23 +170,27 @@ Ask the user which approach they prefer:
 Parallel sessions need permission to use tools (Bash, file editing, MCP calls) without blocking.
 How would you like to handle this?
 
-1. **Auto-accept mode** (recommended) - Sessions accept all tool calls without prompting.
-   Each session runs with: `--permission-mode auto-accept`
+1. **Bypass permissions** (recommended for headless) - Sessions bypass all permission checks.
+   Each session runs with: `--permission-mode bypassPermissions`
 
-2. **Skip permissions** - No permission checks at all. Fastest but least safe.
+2. **Don't ask mode** - Sessions auto-accept without prompting but log decisions.
+   Each session runs with: `--permission-mode dontAsk`
+
+3. **Skip permissions** - Legacy flag, same effect as bypass. Fastest but least safe.
    Each session runs with: `--dangerously-skip-permissions`
 
-3. **Interactive** (manual terminals only) - Normal permission prompts in each terminal.
+4. **Interactive** (manual terminals only) - Normal permission prompts in each terminal.
    You'll need to monitor and respond in each terminal window.
 
-4. **Pre-configured settings** - Use your existing ~/.claude/settings.json allowedTools.
+5. **Pre-configured settings** - Use your existing ~/.claude/settings.json allowedTools.
    Sessions will only prompt for tools not in your allowlist.
 ```
 
 Notes:
 - **Agent Teams**: Teammates inherit the lead's permission mode. Set the lead's mode before spawning teammates.
-- **Headless `claude -p`**: Non-interactive -- **cannot respond to prompts**. Must use option 1, 2, or 4.
-- **Manual terminals**: Any option works, but option 3 requires active monitoring of all terminals.
+- **Headless `claude -p`**: Non-interactive -- **cannot respond to prompts**. Must use option 1, 2, 3, or 5.
+- **Manual terminals**: Any option works, but option 4 requires active monitoring of all terminals.
+- **Valid `--permission-mode` values**: `acceptEdits`, `bypassPermissions`, `default`, `delegate`, `dontAsk`, `plan`.
 
 ### 9. Launch Sessions
 
@@ -228,7 +232,7 @@ Launch each session inside a detached screen session with a wrapper script that 
 ```bash
 screen -dmS claude-task-2.3 bash -c '
   cd ../<project>-worktrees/task-2.3-add-user-api
-  claude -p "<prompt>" --permission-mode auto-accept 2>&1 | tee ../<project>-worktrees/task-2.3.log
+  claude -p "<prompt>" --permission-mode bypassPermissions 2>&1 | tee ../<project>-worktrees/task-2.3.log
   EXIT_CODE=$?
   if [ $EXIT_CODE -ne 0 ]; then
     echo ""
@@ -259,7 +263,7 @@ Same wrapper pattern using tmux:
 ```bash
 tmux new-session -d -s claude-task-2.3 bash -c '
   cd ../<project>-worktrees/task-2.3-add-user-api
-  claude -p "<prompt>" --permission-mode auto-accept 2>&1 | tee ../<project>-worktrees/task-2.3.log
+  claude -p "<prompt>" --permission-mode bypassPermissions 2>&1 | tee ../<project>-worktrees/task-2.3.log
   EXIT_CODE=$?
   if [ $EXIT_CODE -ne 0 ]; then
     echo ""
@@ -278,7 +282,7 @@ tmux new-session -d -s claude-task-2.3 bash -c '
 Run sessions as background processes with log file redirection. No interactive recovery is available in this mode:
 
 ```bash
-cd ../<project>-worktrees/task-2.3-add-user-api && claude -p "<prompt>" --permission-mode auto-accept > ../<project>-worktrees/task-2.3.log 2>&1 &
+cd ../<project>-worktrees/task-2.3-add-user-api && claude -p "<prompt>" --permission-mode bypassPermissions > ../<project>-worktrees/task-2.3.log 2>&1 &
 ```
 
 Warn the user: "Neither screen nor tmux was found. Sessions will run as background processes. You can monitor progress via log files (`tail -f ../<project>-worktrees/task-2.3.log`) but cannot attach to sessions interactively. Consider installing screen or tmux for a better experience."

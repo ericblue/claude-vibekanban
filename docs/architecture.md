@@ -219,7 +219,7 @@ Parallel sessions need to run with minimal interruption. Permission prompts that
 
 - `claude -p --dangerously-skip-permissions` -- skips all permission checks. Fast but risky; use only for trusted, well-scoped tasks.
 - Pre-configured `~/.claude/settings.json` with `allowedTools` that includes the tools the agent needs (Bash, Write, Edit, MCP tools, etc.) -- more controlled than skipping all permissions.
-- `--permission-mode auto-accept` -- accepts all tool calls without prompting.
+- `--permission-mode bypassPermissions` -- accepts all tool calls without prompting.
 
 **For Agent Teams**, set the lead's permission mode before spawning teammates. All teammates inherit it. `--dangerously-skip-permissions` on the lead propagates to all teammates.
 
