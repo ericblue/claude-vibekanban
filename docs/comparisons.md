@@ -103,6 +103,24 @@ These tools are complementary, not competitive. You can use claude-vibekanban fo
 - **Task tracking** -- Aider has no task management. VK integrates with VibeKanban for persistent tracking.
 - **Planning** -- Aider assumes you know what to change. VK helps you figure out what to build and in what order.
 
+## What this adds to VibeKanban
+
+[VibeKanban](https://www.vibekanban.com/) is a great task board with MCP support -- but it's a task board. It tracks what needs doing and lets agents update status. It doesn't have opinions about *how you plan*, *how you decompose work*, or *how you coordinate agents*.
+
+That's the gap these commands fill:
+
+| VibeKanban gives you | These commands add |
+|---|---|
+| Task creation and status tracking | Structured planning pipeline that *generates* the tasks (PRD → epics → tasks with dependencies) |
+| A board view of todo / in progress / done | Drift detection -- warns when tasks are started out of order or dependencies are violated |
+| Workspace sessions (agent + task + repo) | Orchestration that picks *which* tasks to parallelize based on the dependency graph |
+| Multi-agent support (Claude, Cursor, Codex, etc.) | A merge workflow that brings parallel branches back together with test gates |
+| MCP API for programmatic access | A portable markdown plan file that lives in your repo and documents what was built, why, and in what order |
+
+**In short:** VibeKanban is the scoreboard. These commands are the playbook. You need both -- VK to track execution, and the workflow to plan it, coordinate it, and keep everything in sync.
+
+You can use VibeKanban without these commands (just create tasks manually and assign agents). But for anything beyond a handful of tasks, the planning and coordination layer saves significant time and prevents the kind of mistakes that happen when agents work without a shared plan.
+
 ## Design Philosophy
 
 The core difference between claude-vibekanban and most alternatives comes down to three principles:
