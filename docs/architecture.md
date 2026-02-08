@@ -237,7 +237,7 @@ A key practical concern with parallel sessions is visibility: how do you know wh
 | Launch mechanism | Real-time visibility | Attach mid-session | Post-session output |
 |--|--|--|--|
 | **Agent Teams** | Teammate messages appear in the lead's session | No direct attach; lead sees messages but not full session activity | No persistent log (team state is lost on cleanup) |
-| **Screen/tmux sessions** | `screen -r` / `tmux attach` to observe live output | Read-only observation during `claude -p` execution; full interactive input during failure recovery mode | Log file via `tee`; `screen -ls` / `tmux list-sessions` for health checks |
+| **Screen/tmux sessions** | `screen -r` / `tmux attach` to observe live output | Read-only observation during `claude -p` execution; full interactive input during failure recovery mode | Log file via screen's `-L` / tmux's `pipe-pane`; `screen -ls` / `tmux list-sessions` for health checks |
 | **Background processes** | `tail -f` on log file | No interactive attach; read-only log tailing only | Output file via redirect; `--output-format stream-json` for structured output |
 | **Manual terminals** | Full visibility (you're watching each terminal) | Already attached | Terminal scrollback |
 
@@ -247,7 +247,7 @@ Screen and tmux provide the recommended balance of observability and recovery. D
 
 - **Screen/tmux is the primary mechanism** for headless session observability. `/work-parallel` auto-detects screen or tmux at runtime and launches sessions inside managed screen/tmux sessions with failure recovery. Attach to observe progress (`screen -r claude-task-2.3`), check health (`screen -ls`), and detach without stopping (`Ctrl-A D`).
 
-- **Log files are always created** regardless of launch mechanism. Screen/tmux sessions use `tee` to write to both the terminal and a log file. Background processes redirect directly. Logs are stored at `../<project>-worktrees/task-<id>.log`.
+- **Log files are always created** regardless of launch mechanism. Screen uses its built-in `-L -Logfile` flag; tmux uses `pipe-pane`. These avoid piping through `tee`, which would cause block buffering and blank screen sessions. Background processes redirect directly. Logs are stored at `../<project>-worktrees/task-<id>.log`.
 
 - **For Agent Teams**, the lead acts as a natural aggregation point. Teammates message the lead with progress updates. The lead can relay status to the user.
 

@@ -223,16 +223,18 @@ The `claude -p` prompt for each task should include the full task context (descr
 
 **Session naming convention:** `claude-task-<plan-id>` (e.g., `claude-task-2.3`). This mirrors the branch/worktree naming for easy cross-reference.
 
-**Log files:** Always create log files at `../<project>-worktrees/task-<id>.log` regardless of launch mechanism. Screen/tmux use `tee` to write to both the terminal and log file. Background mode redirects directly.
+**Log files:** Always create log files at `../<project>-worktrees/task-<id>.log` regardless of launch mechanism. Screen uses its built-in `-L -Logfile` flag for logging (avoids pipe buffering). Tmux uses `pipe-pane`. Background mode redirects directly.
+
+**Important: Do NOT pipe `claude -p` output through `tee`.** Piping changes stdout from a terminal (PTY) to a pipe, which triggers block buffering — output accumulates in 4KB chunks and the screen session appears blank. Instead, use the session manager's native logging so `claude -p` sees a real terminal and line-buffers normally.
 
 **If `screen` is available:**
 
-Launch each session inside a detached screen session with a wrapper script that detects failures and provides interactive recovery:
+Launch each session inside a detached screen session using screen's built-in logging (`-L -Logfile`) and a wrapper script that detects failures and provides interactive recovery:
 
 ```bash
-screen -dmS claude-task-2.3 bash -c '
+screen -dmS claude-task-2.3 -L -Logfile ../<project>-worktrees/task-2.3.log bash -c '
   cd ../<project>-worktrees/task-2.3-add-user-api
-  claude -p "<prompt>" --permission-mode bypassPermissions 2>&1 | tee ../<project>-worktrees/task-2.3.log
+  claude -p "<prompt>" --permission-mode bypassPermissions 2>&1
   EXIT_CODE=$?
   if [ $EXIT_CODE -ne 0 ]; then
     echo ""
@@ -247,10 +249,13 @@ screen -dmS claude-task-2.3 bash -c '
 ```
 
 The wrapper pattern:
-1. Runs `claude -p "<prompt>"` with output piped through `tee` to the log file
-2. Checks the exit code after `claude -p` finishes
-3. On failure (non-zero exit): automatically launches interactive `claude` in the same screen session and worktree -- the user just needs to attach to continue
-4. On success (exit 0): the screen session ends cleanly
+1. Screen's `-L -Logfile` captures all output to the log file natively — no pipe needed
+2. `claude -p` sees a real terminal (screen's PTY) as stdout, so output appears immediately when you attach
+3. Checks the exit code after `claude -p` finishes
+4. On failure (non-zero exit): automatically launches interactive `claude` in the same screen session and worktree — the user just needs to attach to continue
+5. On success (exit 0): the screen session ends cleanly
+
+**Note on `-Logfile` compatibility:** If your version of screen doesn't support `-Logfile` (older system versions), use `-L` alone — the log will be written to `screenlog.0` in the working directory. Alternatively, install a newer screen via your package manager.
 
 **Health check via `screen -ls`:** Session gone = completed successfully. Session still alive after expected completion time = either still running or waiting in interactive recovery mode for the user.
 
@@ -258,12 +263,12 @@ Note: During normal `claude -p` execution, the screen session is observe-only wh
 
 **If `tmux` is available (and screen is not):**
 
-Same wrapper pattern using tmux:
+Same wrapper pattern using tmux, with `pipe-pane` for logging:
 
 ```bash
 tmux new-session -d -s claude-task-2.3 bash -c '
   cd ../<project>-worktrees/task-2.3-add-user-api
-  claude -p "<prompt>" --permission-mode bypassPermissions 2>&1 | tee ../<project>-worktrees/task-2.3.log
+  claude -p "<prompt>" --permission-mode bypassPermissions 2>&1
   EXIT_CODE=$?
   if [ $EXIT_CODE -ne 0 ]; then
     echo ""
@@ -275,6 +280,7 @@ tmux new-session -d -s claude-task-2.3 bash -c '
     claude
   fi
 '
+tmux pipe-pane -t claude-task-2.3 "cat >> ../<project>-worktrees/task-2.3.log"
 ```
 
 **Fallback (no screen or tmux):**
