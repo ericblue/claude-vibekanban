@@ -2,7 +2,7 @@
 
 A structured, prompt-driven workflow for going from project idea to tracked, executable tasks using [VibeKanban](https://www.vibekanban.com/) and AI coding agents. While this repo ships as Claude Code slash commands, the underlying workflow -- PRD generation, planning, task breakdown, execution, and sync -- works with any agent that connects to VibeKanban's MCP API.
 
-![VibeKanban Board](docs/vibekanban-image.jpeg)
+![VibeKanban Board](docs/img/vibekanban-image.jpeg)
 
 ## Why use this?
 
