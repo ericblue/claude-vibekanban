@@ -112,6 +112,8 @@ Two execution tiers are supported:
 - **Tier 1 (Local worktrees):** Parallel Claude Code sessions using [git worktrees](https://git-scm.com/docs/git-worktree) for full file isolation. Each task gets its own branch and working directory.
 - **Tier 2 (Remote delegation):** Spawn separate agent sessions via VibeKanban's `start_workspace_session`. Supports Claude Code, Cursor, Codex, Gemini, Copilot, and custom agents.
 
+See the [Parallel Task Execution Walkthrough](docs/parallel-task-execution-walkthrough.md) for a step-by-step example with screenshots showing the full Tier 1 workflow in action.
+
 ### Help
 
 | Command | Description |
@@ -504,6 +506,7 @@ The slash commands in this repo are markdown prompt files -- they can be adapted
 ## Documentation
 
 - **[Cookbook](docs/cookbook.md)** -- Walkthroughs, recipes, tips, FAQ, and troubleshooting
+- **[Parallel Task Execution Walkthrough](docs/parallel-task-execution-walkthrough.md)** -- Step-by-step example of running 3 tasks in parallel with screenshots
 - **[Architecture](docs/architecture.md)** -- Execution model, two-tier parallel execution design, known limitations, and future direction for multi-agent orchestration
 
 ## Related

@@ -243,6 +243,8 @@ Nothing is modified. Safe to run anytime.
 
 You have several independent tasks ready and want to knock them out faster.
 
+> **Real-world example:** The [Parallel Task Execution Walkthrough](parallel-task-execution-walkthrough.md) shows this full workflow in action on a retro BBS project -- 3 tasks across different epics running concurrently via `/work-parallel`, monitored with `/session-status`, and merged back with `/merge-parallel`. Includes screenshots of every step from backlog analysis through merge.
+
 **Step 1: Identify candidates**
 
 ```
