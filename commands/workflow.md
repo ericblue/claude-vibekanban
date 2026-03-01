@@ -44,6 +44,7 @@ Display the following command reference to the user:
 | Command | Description |
 |---------|-------------|
 | `/work-parallel` | Analyze backlog, identify independent tasks, set up git worktrees, and launch parallel Claude Code sessions (Tier 1) |
+| `/work-parallel-loop` | Autonomous work loop - parallel execution, monitoring, merging, and testing until all tasks pass |
 | `/delegate-task` | Delegate a task to a separate VK workspace session with a chosen agent (Tier 2) |
 | `/delegate-parallel` | Delegate multiple independent tasks to parallel VK workspace sessions (Tier 2) |
 | `/session-status` | Check status of all active work across local worktrees and VK sessions |
@@ -65,4 +66,4 @@ Display the following command reference to the user:
 
 ---
 
-**16 commands total** (12 core + 4 experimental). For detailed documentation, see the project [README](../README.md), [Cookbook](../docs/cookbook.md), and [Architecture](../docs/architecture.md).
+**17 commands total** (12 core + 5 experimental). For detailed documentation, see the project [README](../README.md), [Cookbook](../docs/cookbook.md), and [Architecture](../docs/architecture.md).
