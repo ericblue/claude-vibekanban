@@ -1,6 +1,6 @@
 ---
 description: Autonomous work loop - parallel execution, monitoring, merging, and testing until all tasks pass
-allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks, mcp__vibe_kanban__get_task, mcp__vibe_kanban__update_task, mcp__vibe_kanban__list_repos
+allowed-tools: mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks, mcp__vibe_kanban__get_task, mcp__vibe_kanban__update_task, mcp__vibe_kanban__list_repos, mcp__vibe_kanban__list_issues, mcp__vibe_kanban__list_tags, mcp__vibe_kanban__list_issue_tags
 version: 0.1.0-preview
 date: 2026-03-01
 author: Eric Blue (https://github.com/ericblue)
@@ -46,13 +46,39 @@ Before entering the loop, verify prerequisites:
 1. **Development plan exists**: Read `docs/development-plan.md`. If missing, stop and tell the user to run `/create-plan` first.
 2. **VK project exists**: Use `list_projects` to find the project. If none, stop and tell the user to run `/generate-tasks` first.
 3. **Clean git state**: Run `git status --porcelain`. If dirty, stop and tell the user to commit or stash first.
-4. **Test command**: Ask the user for their test command (e.g., `npm test`, `pytest`, `make test`). This is **required** — the loop uses test results as the exit condition.
-5. **Max parallel sessions**: Ask the user for the max parallel session count (default: 3).
-6. **Session manager available**: Check for `screen` or `tmux` via `which screen` / `which tmux`. Warn if neither is found (background-only mode has no recovery).
-7. **Estimate iterations needed**: Before starting, analyze the backlog to estimate how many loop iterations will be required:
-   - Use `list_issues` (or `list_tasks`) to count all remaining `todo` tasks
+4. **Goal scope**: Ask the user what scope the loop should target. Present these options:
+
+   | Goal Type | User Input Example | What It Means |
+   |-----------|-------------------|---------------|
+   | All tasks (default) | *(enter)* | Current behavior — finish everything |
+   | Epic | `"Epic 3"`, `"3"`, `"TRK"` | Complete all tasks in a specific epic |
+   | Tag | `"mvp"`, `"sprint-1"` | Complete all VK issues with a specific tag |
+   | Specific tasks | `"2.1, 2.3, 3.1"` | Complete a listed set of plan task IDs |
+   | Custom predicate | `"./scripts/check-ready.sh"` | Loop exits when bash command returns 0 |
+
+   After goal selection, compute **dependency expansion** for epic/tag/specific goals: if any in-scope task depends on an out-of-scope task that isn't `done`, pull that prerequisite into the effective working set. Report the expansion to the user:
+
+   ```
+   ## Goal Scope: Epic 3 [TRK]
+
+   In-scope tasks: 2.1, 3.1, 3.2, 3.3, 3.4
+   Dependency expansion: +1.2 (prerequisite of 3.1), +2.3 (prerequisite of 3.2)
+   Effective working set: 7 tasks (5 in-scope + 2 prerequisites)
+   ```
+
+   If the expansion more than doubles the original scope (>2x), warn the user and suggest "All tasks" instead. Confirm the effective working set before proceeding.
+
+   For **tag** goals, use `list_tags` to validate the tag exists and `list_issues` with `tag_name` to find matching issues. If no issues match, report this and ask for a different tag.
+
+   For **custom predicate** goals, verify the command exists and is executable. If not found, stop and tell the user.
+
+5. **Test command**: Ask the user for their test command (e.g., `npm test`, `pytest`, `make test`). This is **required** — the loop uses test results as the exit condition.
+6. **Max parallel sessions**: Ask the user for the max parallel session count (default: 3).
+7. **Session manager available**: Check for `screen` or `tmux` via `which screen` / `which tmux`. Warn if neither is found (background-only mode has no recovery).
+8. **Estimate iterations needed**: Before starting, analyze the backlog to estimate how many loop iterations will be required:
+   - Use `list_issues` (or `list_tasks`) to count remaining `todo` tasks **within the effective scope** (all tasks for "All tasks" goal; only in-scope + expanded prerequisites for scoped goals)
    - Read `docs/development-plan.md` to understand the dependency graph
-   - Calculate the estimated iterations using: `ceil(remaining_tasks / max_parallel_sessions)` — this is a lower bound since dependencies, retries, and test fixes add iterations
+   - Calculate the estimated iterations using: `ceil(in_scope_remaining_tasks / max_parallel_sessions)` — this is a lower bound since dependencies, retries, and test fixes add iterations
    - Add a buffer of +2 iterations (for merge conflicts, test fixes, and retries)
    - Present the estimate to the user and let them choose the iteration cap:
 
@@ -61,12 +87,13 @@ Before entering the loop, verify prerequisites:
 
    | Metric | Value |
    |--------|-------|
-   | Remaining tasks (todo) | 26 |
+   | In-scope remaining tasks (todo) | 7 |
+   | Prerequisites (expanded) | 2 |
    | Max parallel sessions | 3 |
-   | Estimated iterations (minimum) | 9 |
-   | Recommended cap (with buffer) | 11 |
+   | Estimated iterations (minimum) | 3 |
+   | Recommended cap (with buffer) | 5 |
 
-   The loop will stop automatically when all tasks are done and tests pass,
+   The loop will stop automatically when all in-scope tasks are done and tests pass,
    or when it hits the iteration cap — whichever comes first.
    ```
 
@@ -79,15 +106,46 @@ Record these settings — they persist for the entire loop.
 
 | Setting | Value |
 |---------|-------|
+| Goal | Epic 3 [TRK] — 5 in-scope + 2 prerequisites |
 | Test command | `npm test` |
 | Max parallel | 3 |
 | Session manager | screen |
-| Iteration cap | 11 (estimated 9 + 2 buffer) |
+| Iteration cap | 5 (estimated 3 + 2 buffer) |
 | Permission mode | bypassPermissions |
 | Started at | 2026-03-01 14:30:00 |
 ```
 
 **After configuration, confirm with the user one final time before entering the autonomous loop.** This is the last human checkpoint.
+
+### Goal Predicate Reference
+
+Two predicates are used throughout the loop phases to implement goal-scoped behavior:
+
+#### `in_scope(task)` — Is this task part of the goal?
+
+| Goal Type | Rule |
+|-----------|------|
+| All tasks | Always true |
+| Epic N | Task ID starts with `N.` (e.g., task `3.2` is in scope for Epic 3) |
+| Tag "X" | Task's VK issue has tag "X" — check via `list_issues` with `tag_name` filter |
+| Specific IDs | Task ID is in the user's provided list |
+| Custom predicate | Always true (custom predicate controls exit, not task selection) |
+
+**Note:** The effective working set includes both in-scope tasks AND their expanded prerequisites. Tasks added via dependency expansion are worked on but are not part of the original scope for finalization purposes.
+
+#### `goal_met()` — Should the loop finalize?
+
+| Goal Type | Condition |
+|-----------|-----------|
+| All tasks | All tasks are `done` AND tests pass |
+| Epic N | All originally-scoped Epic N tasks are `done` AND tests pass |
+| Tag "X" | All originally-scoped tagged tasks are `done` AND tests pass |
+| Specific IDs | All user-specified task IDs are `done` AND tests pass |
+| Custom predicate | Bash command exits 0 AND tests pass |
+
+**Key design decision:** `goal_met()` checks the **original scope**, not the expanded effective scope. Prerequisite tasks that were pulled in via dependency expansion do not need to be `done` for the goal to be met — only the originally-scoped tasks matter. However, in practice, prerequisites will typically be completed first since they block in-scope tasks.
+
+**Custom predicate behavior:** Unlike other goal types, the custom predicate does not filter task selection — it selects from ALL tasks (it's a completion condition, not a filter). The loop works on whatever tasks are available, and finalizes when the predicate returns 0.
 
 ### 1. PHASE: Assess Backlog
 
@@ -96,15 +154,24 @@ At the start of each loop iteration:
 1. Use `list_projects` to find the project
 2. Use `list_tasks` to get all tasks and current status
 3. Read `docs/development-plan.md` for dependency data
-4. Identify **available tasks**: status `todo` in VK, all dependencies `done`
-5. Check for mutual dependencies — only select tasks that are independent of each other
-6. Select up to the configured max parallel tasks, ranked by:
+4. **Filter to effective scope** (see [Goal Predicate Reference](#goal-predicate-reference)):
+   - For "All tasks" or "Custom predicate" goals: no filtering — consider all tasks
+   - For Epic/Tag/Specific goals: filter to tasks where `in_scope(task)` is true, plus any expanded prerequisites
+   - **Recompute the effective scope each iteration** — prerequisites completed in prior iterations no longer need to be in the working set
+5. Identify **available tasks**: status `todo` in VK, all dependencies `done`, within the effective scope
+6. Check for mutual dependencies — only select tasks that are independent of each other
+7. Select up to the configured max parallel tasks, ranked by:
    - Priority (urgent > high > medium > low)
    - Complexity (S > M > L — prefer smaller for faster iteration)
    - Epic order (earlier epics first)
-   - Unblocking potential (tasks that unblock others rank higher)
+   - Unblocking potential (tasks that unblock other **in-scope** tasks rank higher)
 
-**Exit condition check:** If NO tasks are available (all are `done`, `inprogress`, or blocked), skip to Phase 5 (Test & Verify) to run the final test suite.
+**Scope progress mini-report** — print at the start of each iteration:
+```
+Goal: Epic 3 [TRK] | In-scope: 5 done, 2 inprogress, 3 todo | 50% complete
+```
+
+**Exit condition check:** If NO **in-scope** tasks are available (all are `done`, `inprogress`, or blocked), skip to Phase 5 (Test & Verify) to run the test suite and check `goal_met()`.
 
 **If only 1 task is available**, still proceed — single-task "parallel" is fine. The loop handles it.
 
@@ -400,9 +467,10 @@ git checkout <default-branch>
 
 **If tests pass (exit code 0):**
 
-Check if there are more tasks remaining in the backlog:
-- If YES → continue to Phase 6 (Sync & Iterate)
-- If NO (all tasks `done`) → proceed to Phase 7 (Finalize)
+Check `goal_met()` (see [Goal Predicate Reference](#goal-predicate-reference)):
+
+- **All/Epic/Tag/Specific goals:** Check if all originally-scoped tasks are `done`. If YES → proceed to Phase 7 (Finalize). If NO → continue to Phase 6 (Sync & Iterate).
+- **Custom predicate goal:** Run the bash command. If it exits 0 → proceed to Phase 7 (Finalize). If non-zero → continue to Phase 6 (Sync & Iterate).
 
 **If tests fail (non-zero exit code):**
 
@@ -449,74 +517,102 @@ Check if there are more tasks remaining in the backlog:
    Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
    ```
 
-3. **Check loop continuation:**
-   - Use `list_tasks` to check remaining backlog
-   - If there are `todo` tasks with satisfied dependencies → **go back to Phase 1**
-   - If all remaining tasks are blocked → report what's blocking and **go back to Phase 1** (blocked tasks may have been unblocked by this iteration's completed work)
-   - If all tasks are `done` and tests pass → proceed to Phase 7
+3. **Check loop continuation** (goal-aware — see [Goal Predicate Reference](#goal-predicate-reference)):
+   - Use `list_tasks` to check the **in-scope** backlog (not the full backlog for scoped goals)
+   - For **custom predicate** goals: run the command. If it exits 0 AND tests pass → proceed to Phase 7.
+   - For **all other goals**: if there are in-scope `todo` tasks with satisfied dependencies → **go back to Phase 1**
+   - If all in-scope remaining tasks are blocked → report what's blocking and **go back to Phase 1** (blocked tasks may have been unblocked by this iteration's completed work)
+   - If `goal_met()` is true → proceed to Phase 7
 
-4. **Print iteration summary:**
+4. **Print iteration summary** (with scope metrics):
    ```
    ## Iteration N Complete
 
    | Metric | Value |
    |--------|-------|
+   | Goal | Epic 3 [TRK] |
    | Tasks completed this iteration | 3 |
    | Tasks failed/skipped | 1 |
    | Merge conflicts auto-resolved | 1 |
    | Test fixes applied | 0 |
-   | Total tasks done | 8/15 |
-   | Remaining available | 4 |
-   | Blocked | 3 |
+   | In-scope done | 5/7 |
+   | In-scope remaining | 2 |
+   | Prerequisites done | 2/2 |
+   | Out-of-scope (ignored) | 19 |
+   | Blocked | 1 |
 
    Proceeding to iteration N+1...
    ```
 
 ### 7. PHASE: Finalize
 
-When all tasks are `done` and tests pass:
+When `goal_met()` is true (see [Goal Predicate Reference](#goal-predicate-reference)):
 
 1. **Final sync:**
    Follow `/sync-plan` one last time to ensure the plan is fully up to date.
 
-2. **Final commit:**
+2. **Final commit** (goal-aware message):
    ```bash
+   # For "All tasks" goal:
    git add -A
    git commit -m "chore: complete autonomous work loop - all tasks done, tests passing
 
    Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+
+   # For scoped goals (epic/tag/specific/custom):
+   git add -A
+   git commit -m "chore: complete autonomous work loop - Epic 3 [TRK] complete, tests passing
+
+   Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
    ```
 
-3. **Print final report:**
+   Adapt the commit message to reflect the goal type:
+   - Epic: `"Epic N [TAG] complete"`
+   - Tag: `"tag 'X' tasks complete"`
+   - Specific: `"tasks 2.1, 2.3, 3.1 complete"`
+   - Custom: `"custom goal met (predicate passed)"`
+
+3. **Print final report** (goal-aware):
    ```
-   ## Autonomous Work Loop Complete
+   ## Autonomous Work Loop Complete — Epic 3 [TRK]
 
    | Metric | Value |
    |--------|-------|
-   | Total iterations | 4 |
-   | Total tasks completed | 15 |
-   | Total tasks failed (need manual review) | 1 |
-   | Total merge conflicts auto-resolved | 3 |
-   | Total test fix commits | 2 |
+   | Goal | Epic 3 [TRK] |
+   | Total iterations | 3 |
+   | In-scope tasks completed | 5 |
+   | Prerequisites completed | 2 |
+   | Total tasks failed (need manual review) | 0 |
+   | Total merge conflicts auto-resolved | 1 |
+   | Total test fix commits | 1 |
    | Final test suite | PASSING |
    | Started at | 2026-03-01 14:30:00 |
-   | Finished at | 2026-03-01 16:45:00 |
+   | Finished at | 2026-03-01 15:20:00 |
 
    ### Tasks Needing Manual Review
-   - 4.2 - Add logging: Failed after 2 retries (no commits produced)
+   (none)
 
    ### All Merged Branches
-   - task/1.1-project-setup (3 commits)
-   - task/1.2-configure-linting (2 commits)
-   - task/2.3-add-user-api (8 commits)
+   - task/3.1-setup-database (5 commits)
+   - task/3.2-add-models (4 commits)
+   - task/3.3-add-migrations (3 commits)
+   - task/3.4-seed-data (2 commits)
+   - task/1.2-configure-linting (2 commits) [prerequisite]
    - ...
+
+   ### Remaining Out-of-Scope Tasks
+   - 19 tasks in other epics not included in this goal
+   - Run `/plan-status` for the full backlog view
 
    ### Next Steps
    - Review the changes: `git log --oneline -20`
-   - Check failed tasks manually
+   - Check failed tasks manually (if any)
    - Push when ready: `git push`
    - Run `/plan-status` for the final progress view
+   - Run `/work-parallel-loop` to continue with remaining tasks
    ```
+
+   For the "All tasks" goal, omit the "Remaining Out-of-Scope Tasks" section and the "continue with remaining tasks" next step (since there are none).
 
 4. **Do NOT push to remote.** Leave that decision to the user.
 
@@ -530,10 +626,16 @@ When all tasks are `done` and tests pass:
 - **Disk space**: Not monitored, but if git operations fail unexpectedly, suggest checking disk space.
 - **Concurrent users**: This loop assumes it is the only agent modifying the repository. Running multiple loops simultaneously on the same repo will cause conflicts.
 - **No test command works**: If the test command fails to execute (not "tests fail" but "command not found"), stop the loop and ask the user to fix the test setup.
+- **Scoped task depends on out-of-scope task**: Auto-expand the effective working set to include the prerequisite. This is computed in pre-flight and recomputed each iteration (prerequisites already completed are dropped from the working set).
+- **Custom predicate returns 0 before all tasks done**: Finalize immediately — the goal is met even if tasks remain. The custom predicate is the authority on completion.
+- **Tag has no matching issues**: Report during pre-flight (step 4) and ask the user for a different tag or goal type. Do not enter the loop with an empty scope.
+- **Epic has no remaining todo tasks**: All in-scope tasks are already `done`. Run the test suite once — if tests pass, finalize immediately. If tests fail, attempt fixes and finalize.
+- **Scope expansion > 2x original**: Warn the user during pre-flight that the effective working set is significantly larger than the original scope. Suggest "All tasks" instead, but let the user decide.
+- **Custom predicate command not found**: Stop the loop during pre-flight (step 4), same as when the test command is not found. Do not enter the loop with an invalid predicate.
 
 ### 9. Safety Guardrails
 
-- **Max iterations**: Uses the iteration cap chosen by the user during pre-flight (Step 7). The cap is estimated from the backlog size and parallelism, with a buffer for retries and merge fixes. Hard maximum is 50 to prevent truly runaway loops. If the loop hits the cap without converging, stop and report.
+- **Max iterations**: Uses the iteration cap chosen by the user during pre-flight (Step 8). The cap is estimated from the backlog size and parallelism, with a buffer for retries and merge fixes. Hard maximum is 50 to prevent truly runaway loops. If the loop hits the cap without converging, stop and report.
 - **Max retries per task**: 2 retries. After that, skip and flag for manual review.
 - **Max test fix attempts**: 2 inline fix attempts per test phase. After that, create VK tasks for remaining failures.
 - **No force pushes**: Never use `git push --force` or `git reset --hard`.
