@@ -11,6 +11,20 @@ repository: https://github.com/ericblue/claude-vibekanban
 
 > **This command is experimental.** It orchestrates a fully autonomous loop of parallel task execution, monitoring, merging, testing, and iteration. Designed for maximum autonomy with minimal human intervention.
 
+## Prerequisites: Permission Mode
+
+This command orchestrates many bash operations (git worktree management, screen/tmux sessions, `claude -p` child processes, branch merging, cleanup) that will each trigger permission prompts under the default mode. **You must start the main Claude Code session with elevated permissions:**
+
+```bash
+# Recommended — bypasses all permission prompts in the orchestrator session
+claude --permission-mode bypassPermissions
+
+# Alternative
+claude --dangerously-skip-permissions
+```
+
+Without this, you will be prompted dozens of times for git, screen/tmux, and process management commands throughout the loop. The spawned child sessions already use `--permission-mode bypassPermissions` internally, but the main orchestrator session needs it too.
+
 ## Context
 
 You are running an autonomous work loop that repeatedly:
@@ -21,9 +35,7 @@ You are running an autonomous work loop that repeatedly:
 5. Fixes failures or launches the next batch
 6. Repeats until all tasks are done and tests pass
 
-This command composes the existing `/work-parallel`, `/session-status`, `/merge-parallel`, and `/sync-plan` workflows into a single autonomous loop. It is designed to run with `--permission-mode bypassPermissions` so no human input is needed during execution.
-
-**Important:** The user should launch their Claude Code session with `--permission-mode bypassPermissions` or `--dangerously-skip-permissions` for this command to work without interruption.
+This command composes the existing `/work-parallel`, `/session-status`, `/merge-parallel`, and `/sync-plan` workflows into a single autonomous loop.
 
 ## Instructions
 
@@ -37,6 +49,28 @@ Before entering the loop, verify prerequisites:
 4. **Test command**: Ask the user for their test command (e.g., `npm test`, `pytest`, `make test`). This is **required** — the loop uses test results as the exit condition.
 5. **Max parallel sessions**: Ask the user for the max parallel session count (default: 3).
 6. **Session manager available**: Check for `screen` or `tmux` via `which screen` / `which tmux`. Warn if neither is found (background-only mode has no recovery).
+7. **Estimate iterations needed**: Before starting, analyze the backlog to estimate how many loop iterations will be required:
+   - Use `list_issues` (or `list_tasks`) to count all remaining `todo` tasks
+   - Read `docs/development-plan.md` to understand the dependency graph
+   - Calculate the estimated iterations using: `ceil(remaining_tasks / max_parallel_sessions)` — this is a lower bound since dependencies, retries, and test fixes add iterations
+   - Add a buffer of +2 iterations (for merge conflicts, test fixes, and retries)
+   - Present the estimate to the user and let them choose the iteration cap:
+
+   ```
+   ## Iteration Estimate
+
+   | Metric | Value |
+   |--------|-------|
+   | Remaining tasks (todo) | 26 |
+   | Max parallel sessions | 3 |
+   | Estimated iterations (minimum) | 9 |
+   | Recommended cap (with buffer) | 11 |
+
+   The loop will stop automatically when all tasks are done and tests pass,
+   or when it hits the iteration cap — whichever comes first.
+   ```
+
+   Ask the user: **"Recommended iteration cap is N. Use this, or specify a different limit?"** (Default: the recommended cap. Minimum: 1. Hard maximum: 50 — to prevent truly runaway loops.)
 
 Record these settings — they persist for the entire loop.
 
@@ -48,6 +82,7 @@ Record these settings — they persist for the entire loop.
 | Test command | `npm test` |
 | Max parallel | 3 |
 | Session manager | screen |
+| Iteration cap | 11 (estimated 9 + 2 buffer) |
 | Permission mode | bypassPermissions |
 | Started at | 2026-03-01 14:30:00 |
 ```
@@ -90,9 +125,12 @@ For each selected task, follow the `/work-parallel` launch procedure:
 3. **Build the prompt** for each session with full context:
    - Task description and acceptance criteria from the plan
    - Relevant PRD sections
-   - Instruction to append a Completion Log to the VK task description when done
+   - Instruction to update `docs/development-plan.md`: check off acceptance criteria (`[ ]` → `[x]`) and append a Completion Log below the task's AC section
+   - Instruction to append a Completion Log to the VK task description when done (using `get_task` then `update_task`)
    - Instruction to mark the task as `inreview` when finished
-   - Instruction to commit all work before exiting
+   - Instruction to commit all work (including the updated development plan) before exiting
+
+   Use the same prompt template as `/work-parallel` (Step 1: update plan, Step 2: log to VK, Step 3: mark inreview).
 
 4. **Launch sessions** using the detected session manager:
 
@@ -488,14 +526,14 @@ When all tasks are `done` and tests pass:
 - **All sessions fail in an iteration**: After retries are exhausted, proceed to merge whatever succeeded. If nothing to merge, skip to test phase. If tests pass with prior work, sync and check for new available tasks.
 - **Worktree already exists**: If a worktree/branch already exists for a task, check if it has commits. If yes, reuse it (continue where left off). If no, remove and recreate it.
 - **Git worktree add fails**: Try with a different branch name (append `-retry`). If still fails, skip the task this iteration.
-- **Loop runs for more than 10 iterations without convergence**: Stop and report. Something is likely wrong (circular dependencies, perpetually failing tests, etc.).
+- **Loop runs for more than the configured iteration cap without convergence**: Stop and report. Something is likely wrong (circular dependencies, perpetually failing tests, etc.).
 - **Disk space**: Not monitored, but if git operations fail unexpectedly, suggest checking disk space.
 - **Concurrent users**: This loop assumes it is the only agent modifying the repository. Running multiple loops simultaneously on the same repo will cause conflicts.
 - **No test command works**: If the test command fails to execute (not "tests fail" but "command not found"), stop the loop and ask the user to fix the test setup.
 
 ### 9. Safety Guardrails
 
-- **Max iterations**: Hard cap at 10 iterations. If the loop hasn't converged after 10 iterations, stop and report.
+- **Max iterations**: Uses the iteration cap chosen by the user during pre-flight (Step 7). The cap is estimated from the backlog size and parallelism, with a buffer for retries and merge fixes. Hard maximum is 50 to prevent truly runaway loops. If the loop hits the cap without converging, stop and report.
 - **Max retries per task**: 2 retries. After that, skip and flag for manual review.
 - **Max test fix attempts**: 2 inline fix attempts per test phase. After that, create VK tasks for remaining failures.
 - **No force pushes**: Never use `git push --force` or `git reset --hard`.
