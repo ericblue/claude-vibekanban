@@ -203,3 +203,9 @@ The full parallel execution cycle:
 - **Human review gates** at key points — task selection, permission mode, merge strategy
 
 The result: 3 complex tasks completed concurrently, each with clean commits, comprehensive tests, and detailed dev notes — all coordinated through a single terminal.
+
+---
+
+## What's Next: Autonomous Loop
+
+For an even more hands-off experience, `/work-parallel-loop` wraps this entire cycle (launch → monitor → merge → test → iterate) into an autonomous loop. Configure your goal scope, test command, and iteration cap once, then let it run until all tasks are done and tests pass. See the [cookbook](cookbook.md) for details.

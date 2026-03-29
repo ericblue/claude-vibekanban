@@ -84,6 +84,16 @@ After sessions complete, merge everything back:
 /merge-parallel            # merge branches, test, update VK, clean up
 ```
 
+### Want to run the full autonomous loop (experimental)
+
+Let Claude handle the entire parallel cycle -- launch, monitor, merge, test, repeat:
+
+```
+/work-parallel-loop
+```
+
+You'll be asked for a goal scope (all tasks, specific epic, tag, or task IDs), a test command, and max parallel sessions. After confirming, the loop runs autonomously until all in-scope tasks are done and tests pass.
+
 ### Want to delegate tasks to remote agents (experimental)
 
 Hand off a task to a VibeKanban workspace session:
@@ -1049,6 +1059,10 @@ This is a stopgap — a proper VK comment/log API would be the ideal solution. I
 
 A: By design. The 80% case is trivial merges that go through cleanly. For the 20% that conflict -- shared registries, config files, barrel exports -- you really want a person looking at it. Auto-resolution risks silently producing broken code that passes syntax checks but has wrong semantics (duplicate entries, wrong import order, dropped config). When `/merge-parallel` hits a conflict, it stops, reports the conflicting files, and waits. You fix it, re-run, and already-merged branches are skipped automatically.
 
+**Q: What is `/work-parallel-loop` and how does it differ from `/work-parallel`?**
+
+A: `/work-parallel` sets up and launches a single batch of parallel sessions -- you then monitor, merge, and iterate manually. `/work-parallel-loop` wraps the entire cycle (launch → monitor → merge → test → iterate) into an autonomous loop that repeats until all in-scope tasks are done and tests pass. It composes `/work-parallel`, `/session-status`, `/merge-parallel`, and `/sync-plan` into a single command. You configure the goal scope (all tasks, a specific epic, tag, task IDs, or a custom predicate), a test command, and max parallel sessions, then confirm once -- after that it runs autonomously with safety guardrails (iteration cap, max retries per task, max test fix attempts). Best for well-defined backlogs where you want maximum throughput with minimal babysitting.
+
 **Q: Can parallel tasks cause merge conflicts?**
 
 A: Yes. Each parallel session works on its own branch. When merging back to main, conflicts are possible if tasks touch related files -- especially shared registries, route tables, index/barrel files, and config files. Independent tasks that modify different files merge cleanly. Use the rebase-then-merge pattern: merge one branch, rebase the next onto the updated main, resolve conflicts, repeat.
@@ -1057,7 +1071,7 @@ A: Yes. Each parallel session works on its own branch. When merging back to main
 
 **Q: Is this workflow fully autonomous or does it require human input?**
 
-A: Human-in-the-loop by design. Every command has explicit human decision points: confirming which task to work on, reviewing implementations before marking done, approving parallel execution plans, choosing permission modes. There is no "run until the backlog is empty" auto-loop. Each task requires a new invocation. This is intentional -- it keeps humans engaged with progress, prevents runaway token consumption, and ensures quality through review at every step.
+A: Human-in-the-loop by design for most commands. Every command has explicit human decision points: confirming which task to work on, reviewing implementations before marking done, approving parallel execution plans, choosing permission modes. The exception is `/work-parallel-loop`, which provides an autonomous "run until done" loop -- but it still requires human configuration upfront (goal scope, test command, iteration cap) and has built-in safety guardrails (max retries, iteration caps, test fix limits). For individual task execution, each task requires a new invocation of `/work-next` or `/work-task`.
 
 **Q: How does this compare to Ralph or other fully autonomous approaches?**
 
@@ -1316,6 +1330,7 @@ Run `/session-status` to see which worktrees correspond to completed tasks and c
 | Command | Input | Modifies Plan | Modifies VK | Modifies Code | Creates Worktrees |
 |---------|-------|:---:|:---:|:---:|:---:|
 | `/work-parallel` | Task IDs (optional) | No | Yes (marks inprogress) | Yes (in worktrees) | Yes |
+| `/work-parallel-loop` | Goal scope (optional) | Yes (syncs after each iteration) | Yes (full lifecycle) | Yes (in worktrees) | Yes (creates and removes) |
 | `/merge-parallel` | None | No | Yes (marks done) | No | No (removes) |
 | `/delegate-task` | Task ID or title | No | Yes (starts session) | Yes (remote) | No |
 | `/delegate-parallel` | Task IDs or titles | No | Yes (starts sessions) | Yes (remote) | No |

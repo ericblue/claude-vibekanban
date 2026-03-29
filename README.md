@@ -510,7 +510,6 @@ The slash commands in this repo are markdown prompt files -- they can be adapted
 - **[Cookbook](docs/cookbook.md)** -- Walkthroughs, recipes, tips, FAQ, and troubleshooting
 - **[Parallel Task Execution Walkthrough](docs/parallel-task-execution-walkthrough.md)** -- Step-by-step example of running 3 tasks in parallel with screenshots
 - **[Architecture](docs/architecture.md)** -- Execution model, two-tier parallel execution design, known limitations, and future direction for multi-agent orchestration
-- **[Agent Flywheel Analysis](docs/agent-flywheel-analysis.md)** -- Competitive analysis of the Agent Flywheel methodology with adoption recommendations
 
 ## Related
 
