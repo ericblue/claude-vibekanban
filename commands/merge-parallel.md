@@ -11,6 +11,15 @@ repository: https://github.com/ericblue/claude-vibekanban
 
 > **This command is experimental and actively evolving.** Expect changes.
 
+## Prerequisites: Permission Mode
+
+This command runs git merge/rebase operations, worktree cleanup, and branch deletion that will trigger permission prompts under the default mode. **Start the main Claude Code session with elevated permissions:**
+
+```bash
+claude --permission-mode bypassPermissions
+# or: claude --dangerously-skip-permissions
+```
+
 ## Context
 
 You are merging branches from parallel worktree sessions (created by `/work-parallel`) back into the main branch. This command automates the merge-test-cleanup cycle that follows parallel execution. It handles sequential merging, optional testing, VK status updates, and worktree cleanup.

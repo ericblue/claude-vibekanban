@@ -107,9 +107,39 @@ Run relevant tests, builds, or checks.
 
 Ask: **"Should I mark this task as done in VibeKanban?"**
 
+**Before updating the task status**, complete these logging steps:
+
+**Step 1 — Update the development plan:** Edit `docs/development-plan.md` to:
+- Check off acceptance criteria: change `[ ]` to `[x]` for each satisfied criterion in the Task Details section
+- Append a Completion Log block below the task's acceptance criteria (see format below)
+
+**Step 2 — Append a completion log to VK:** Use `get_task` to read the current task description, then `update_task` to set the description to the original plus a completion log section appended at the end:
+
+```
+---
+## Completion Log
+**Completed:** [date]
+**Branch:** [branch name]
+
+### What was implemented
+[Summary of what was built/changed and how it satisfies the acceptance criteria]
+
+### Files added
+- [new files]
+
+### Files modified
+- [modified files with brief description of changes]
+
+### Verification
+[How the implementation was verified — tests run, builds checked, manual testing]
+```
+
+**Step 3 — Update status** based on user choice:
 - User confirms: Set status to `done`
 - User wants review: Set status to `inreview`
 - User wants changes: Iterate, re-verify, ask again
+
+**Non-blocking on failure:** If `update_task` fails when appending the completion log, warn but continue — proceed to update the task status. Logging is best-effort; it should never block the workflow.
 
 ### 6. Suggest What's Next
 

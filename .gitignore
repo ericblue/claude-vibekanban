@@ -12,3 +12,6 @@ Thumbs.db
 # Test files
 test-output/
 *.test.md
+
+# MCP config (contains local paths)
+.mcp.json

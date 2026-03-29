@@ -11,6 +11,17 @@ repository: https://github.com/ericblue/claude-vibekanban
 
 > **This command is experimental and actively evolving.** The parallel execution model is being tested and refined. Expect changes.
 
+## Prerequisites: Permission Mode
+
+This command runs many bash operations (git worktree creation, screen/tmux session launching, `claude -p` child processes) that will trigger permission prompts under the default mode. **Start the main Claude Code session with elevated permissions:**
+
+```bash
+claude --permission-mode bypassPermissions
+# or: claude --dangerously-skip-permissions
+```
+
+The spawned child sessions already use `--permission-mode bypassPermissions` internally, but the main orchestrator session needs it too.
+
 ## Context
 
 You are setting up parallel task execution using git worktrees. Each task gets its own worktree directory and branch, and a full Claude Code session runs in each. This provides complete file isolation while allowing multiple tasks to be implemented simultaneously.
@@ -221,36 +232,47 @@ Include the permission flag the user chose in step 8.
 
 The `claude -p` prompt for each task should include the full task context (description, acceptance criteria, relevant PRD sections) and end with:
 
-> "If you encounter ambiguity, make your best judgment and note assumptions. When you finish implementation, before marking the task as `inreview`:
+> "If you encounter ambiguity, make your best judgment and note assumptions. When you finish implementation, before marking the task as `inreview`, complete these logging steps:
 >
+> **Step 1 — Update the development plan:** Edit `docs/development-plan.md` to:
+> - Check off acceptance criteria: change `[ ]` to `[x]` for each satisfied criterion in the Task Details section for this task
+> - Append a Completion Log block below the task's acceptance criteria
+>
+> **Step 2 — Append a completion log to VK:**
 > 1. Use `get_task` to read the current task description.
 > 2. Use `update_task` to set the description to the original description plus a completion log section appended at the end. The completion log should include: files changed, a brief summary of what was implemented, any assumptions made, and whether acceptance criteria were met. Use this format:
 >
 > ```
 > ---
-> ## Completion Log
-> **Agent:** Claude Code (headless)
-> **Branch:** task/2.3-add-user-api
+> Completion Log
+> Completed: [date]
+> Agent: Claude Code (headless)
+> Branch: task/2.3-add-user-api
 >
-> ### Changes
-> - Created src/routes/users.ts (new file)
-> - Modified src/app.ts (added user routes)
-> - Created tests/users.test.ts (new file)
->
-> ### Summary
+> What was implemented:
 > Implemented CRUD endpoints for user management...
 >
-> ### Assumptions
+> Assumptions:
 > - Used JWT for authentication (not specified in AC)
 >
-> ### Acceptance Criteria
+> Files added:
+> - src/routes/users.ts
+> - tests/users.test.ts
+>
+> Files modified:
+> - src/app.ts — added user routes
+>
+> Acceptance Criteria:
 > - [x] GET /users/:id returns user profile
 > - [x] PUT /users/:id updates user fields
 > - [x] Endpoints require valid JWT
 > - [x] Input validation rejects malformed data
+>
+> Verification:
+> [Tests run, build status, manual verification]
 > ```
 >
-> 3. Then use `update_task` to set status to `inreview`.
+> **Step 3** — Use `update_task` to set status to `inreview`.
 >
 > If `update_task` fails when appending the completion log, warn but continue — log the error and proceed to mark the task as `inreview`. Logging is best-effort; it should never block the workflow.
 >

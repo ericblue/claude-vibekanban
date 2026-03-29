@@ -119,33 +119,33 @@ Present a summary to the user:
 
 Then ask: **"Should I mark this task as done in VibeKanban?"**
 
-**Before updating the task status**, append a completion log to the task description in VK:
+**Before updating the task status**, complete these logging steps:
 
-1. Use `get_task` to read the current task description
-2. Use `update_task` to set the description to the original description plus a completion log section appended at the end. Use this format:
+**Step 1 — Update the development plan:** Edit `docs/development-plan.md` to:
+- Check off acceptance criteria: change `[ ]` to `[x]` for each satisfied criterion in the Task Details section
+- Append a Completion Log block below the task's acceptance criteria:
 
 ```
 ---
-## Completion Log
-**Agent:** Claude Code (interactive)
-**Branch:** main (or feature branch name if applicable)
-
-### Changes
-- Modified src/routes/users.ts (added validation)
-- Created tests/users.test.ts (new file)
-
-### Summary
-Implemented input validation for user endpoints...
-
-### Acceptance Criteria
-- [x] GET /users/:id returns user profile
-- [x] Input validation rejects malformed data
+Completion Log
+Completed: [date]
+Branch: [branch name]
+What was implemented:
+[Detailed summary of what was built/changed, organized by acceptance criterion]
+Files added:
+[list of new files]
+Files modified:
+[list of modified files with brief description of changes]
+Verification:
+[How verified — tests, builds, manual testing, results]
 ```
 
-3. Then update the status based on user choice:
-   - If user confirms: Use `update_task` to set status to `done`
-   - If user wants review first: Use `update_task` to set status to `inreview`
-   - If user wants changes: Make the requested changes, re-verify, and ask again
+**Step 2 — Append a completion log to VK:** Use `get_task` to read the current task description, then `update_task` to set the description to the original description plus a completion log section appended at the end. Use the same format as above, prefixed with `---` separator.
+
+**Step 3 — Update status** based on user choice:
+- If user confirms: Use `update_task` to set status to `done`
+- If user wants review first: Use `update_task` to set status to `inreview`
+- If user wants changes: Make the requested changes, re-verify, and ask again
 
 **Non-blocking on failure:** If `update_task` fails when appending the completion log, warn but continue — proceed to update the task status. Logging is best-effort; it should never block the workflow.
 

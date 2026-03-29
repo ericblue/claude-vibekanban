@@ -37,7 +37,7 @@ VibeKanban acts as the shared coordination layer -- the agent does the coding, V
 
 ## What This Repo Adds
 
-This repo provides **17 slash commands** (12 core + 5 experimental) that build a complete development pipeline on top of VibeKanban's MCP API:
+This repo provides **18 slash commands** (12 core + 6 experimental) that build a complete development pipeline on top of VibeKanban's MCP API:
 
 1. **PRD** (Product Requirements Document) defines what to build
 2. **Development Plan** breaks it down into epics, tasks, dependencies, and acceptance criteria
@@ -102,6 +102,7 @@ flowchart LR
 | Command | Description |
 |---------|-------------|
 | `/work-parallel` | Analyze backlog, identify independent tasks, set up worktrees, mark tasks in progress, and auto-launch parallel sessions (screen/tmux/background) |
+| `/work-parallel-loop` | Autonomous work loop -- parallel execution, monitoring, merging, and testing until all tasks pass. Supports goal-scoped execution (epic, tag, specific tasks, custom predicate) with auto-detected iteration caps. |
 | `/merge-parallel` | Merge worktree branches to main, run tests, update VK status, and clean up worktrees/sessions |
 | `/delegate-task` | Delegate a task to a separate VibeKanban workspace session (any supported agent) |
 | `/delegate-parallel` | Delegate multiple independent tasks to parallel workspace sessions |
@@ -501,13 +502,15 @@ The slash commands in this repo are markdown prompt files -- they can be adapted
 | 0.1 | 2026-01-22 | Initial release with 7 core commands: `/prd-review`, `/create-plan`, `/generate-tasks`, `/sync-plan`, `/plan-status`, `/add-epic`, `/close-epic` |
 | 0.2 | 2026-02-06 | Added `/generate-prd` (interview-style PRD creation) and `/next-task` (priority-based task recommendation). Enhanced `/create-plan` with Complexity and Depends On columns, per-task acceptance criteria in Task Details sections. Enhanced `/sync-plan` with drift detection (stale tasks, dependency violations, blocked tasks ready to start, scope drift). Fixed MCP tool name prefix (`mcp__vibe_kanban__`) across all commands. Replaced inline bash execution with tool instructions to fix permission errors. |
 | 0.21 | 2026-02-06 | Added `/work-task` and `/work-next` execution commands for autonomous task implementation with full context assembly and AC verification. Expanded README with VibeKanban overview, multi-agent support table, and board screenshot. |
-| 0.3.1-preview | 2026-02-07 | Experimental parallel execution: `/work-parallel` (local worktrees + full CC sessions with screen/tmux auto-launch, failure recovery, `SESSION_STATUS:` log markers), `/merge-parallel` (sequential merging, optional test commands, VK status updates, worktree/session cleanup), `/delegate-task`, `/delegate-parallel`, `/session-status` (cross-references session state + VK status + log markers). Two-tier execution model. Completion logs appended to VK task descriptions as stopgap for missing comment API. Renamed `/delegate-batch` to `/delegate-parallel`. Added [architecture doc](docs/architecture.md) and [cookbook](docs/cookbook.md) with recipes for parallel work, quality gates, and result logging. |
+| 0.3.1 | 2026-02-08 | Experimental parallel execution: `/work-parallel` (local worktrees + full CC sessions with screen/tmux auto-launch, failure recovery, `SESSION_STATUS:` log markers), `/merge-parallel` (sequential merging, optional test commands, VK status updates, worktree/session cleanup), `/delegate-task`, `/delegate-parallel`, `/session-status` (cross-references session state + VK status + log markers). Two-tier execution model. Completion logs appended to VK task descriptions as stopgap for missing comment API. Renamed `/delegate-batch` to `/delegate-parallel`. Added [architecture doc](docs/architecture.md) and [cookbook](docs/cookbook.md) with recipes for parallel work, quality gates, and result logging. Added [parallel task execution walkthrough](docs/parallel-task-execution-walkthrough.md). |
+| 0.4.0 | 2026-03-28 | Added `/work-parallel-loop` -- autonomous work loop that orchestrates parallel execution, session monitoring, branch merging, test verification, and iteration until all tasks pass or a goal is met. Supports goal-scoped execution (by epic, tag, specific task IDs, or custom predicate) with auto-detected iteration caps and dependency expansion. Added prerequisite permission mode sections to `/work-parallel` and `/merge-parallel`. Standardized completion logging across `/work-next`, `/work-task`, and `/work-parallel` (Step 1: update dev plan, Step 2: append VK log, Step 3: update status). Considerable testing of `/work-parallel` and `/work-parallel-loop` workflows across multiple real projects. Added [Agent Flywheel analysis](docs/agent-flywheel-analysis.md) for competitive methodology review. 18 commands total (12 core + 6 experimental). |
 
 ## Documentation
 
 - **[Cookbook](docs/cookbook.md)** -- Walkthroughs, recipes, tips, FAQ, and troubleshooting
 - **[Parallel Task Execution Walkthrough](docs/parallel-task-execution-walkthrough.md)** -- Step-by-step example of running 3 tasks in parallel with screenshots
 - **[Architecture](docs/architecture.md)** -- Execution model, two-tier parallel execution design, known limitations, and future direction for multi-agent orchestration
+- **[Agent Flywheel Analysis](docs/agent-flywheel-analysis.md)** -- Competitive analysis of the Agent Flywheel methodology with adoption recommendations
 
 ## Related
 
